@@ -240,10 +240,10 @@ END
  
     yesno "Do you want to send update notification emails" $UPDATE_EMAIL UPDATE_EMAIL
   else
-    UPDATE_EMAIL=OFF
+    UPDATE_EMAIL=off
   fi
 else
-  UPDATE_EMAIL=OFF
+  UPDATE_EMAIL=off
 fi
  
 cat <<END
