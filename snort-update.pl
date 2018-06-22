@@ -46,8 +46,8 @@ my $rule_dir        = "/etc/snort/rules";
 my $oinkmaster_conf = "${General::swroot}/snort/oinkmaster.conf";
 my $snort_conf      = "/etc/snort/snort.conf";
 my $mail_config     = "${General::swroot}/dma/mail.conf";
-my $update_settings = "${General::swroot}/snort/updatesettings";
-my $update_status   = "${General::swroot}/snort/updatestatus";
+my $update_settings = "${General::swroot}/snortupdate/settings";
+my $update_status   = "${General::swroot}/snortupdate/status";
 my $snort_settings  = "${General::swroot}/snort/settings";
 my $proxy_settings  = "${General::swroot}/proxy/settings";
 my $cert_file       = "/etc/ssl/certs/ca-bundle.crt";
@@ -718,7 +718,7 @@ sub update_rules()
 
     log_message LOG_INFO, "Updating $name rules";
     
-    my $conf_file = "${General::swroot}/snort/${type}_oinkmaster.conf";
+    my $conf_file = "${General::swroot}/snortupdate/${type}_oinkmaster.conf";
 
     if (-e $conf_file)
     {
@@ -1152,7 +1152,7 @@ sub generate_oinkmaster_config( )
     my ($file, $type, $name) = @{ $update };
     my $status;
 
-    my $conf_file = "${General::swroot}/snort/${type}_oinkmaster.conf";
+    my $conf_file = "${General::swroot}/snortupdate/${type}_oinkmaster.conf";
     
     # Create a new Oinkmaster config file.
     
