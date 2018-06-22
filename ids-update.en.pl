@@ -1,0 +1,46 @@
+# Added for Automated IDS Update accounting
+%tr = (
+%tr,
+'snrtupd update status' => 'Rule update status',
+'snrtupd update failed' => 'Rule update failed',
+'snrtupd update partial' => 'Rule update partially completed',
+'snrtupd update success' => 'Rule update successful',
+'snrtupd ids update log' => 'IDS Update Logs',
+'snrtupd ids update log viewer' => 'IDS Update log viewer',
+'snrtupd updates' => 'Number of rule updates for',
+'snrtupd active rules' => 'Number of active rules',
+'snrtupd ruleset' => 'Ruleset',
+'snrtupd new rules' => 'New rules',
+'snrtupd enabled' => 'Enabled',
+'snrtupd disabled' => 'Disabled',
+'snrtupd deleted rules' => 'Deleted rules',
+'snrtupd updated rules' => 'Updated rules',
+'snrtupd changed enabled' => 'Enabled rules that have changed',
+'snrtupd consider disabling' => 'The following enabled rules have changed that would normally be disabled in the currently selected policy. ' .
+                                'It is worth considering whether the reasons they were enabled are still valid.',
+'snrtupd changed disabled' => 'Disabled rules that have changed',
+'snrtupd consider enabling' => 'The following disabled rules have changed that would normally be enabled in the currently selected policy. ' .
+                                'It is worth considering whether the reasons they were disabled are still valid.',
+'snrtupd enabled' => 'Rules that have been enabled',
+'snrtupd enabled due to policy change' => 'The following rules have been enabled due to a change in policy',
+'snrtupd disabled' => 'Rules that have been disabled',
+'snrtupd disabled due to policy changed' => 'The following rules have been disabled due to a change in policy',
+'snrtupd change' => 'Change',
+'snrtupd from' => 'From',
+'snrtupd to' => 'To',
+'snrtupd none found' => 'None found in active rule files',
+'snrtupd unrecognised log messages' => 'Unknown Entries',
+'snrtupd flowbit warnings' => 'There are warnings for flowbits being tested in the active rules without being set.',
+'snrtupd flowbit warning list' => 'Intrusion Detection System rule flowbit warnings',
+'snrtupd flowbit warning explaination' => 'Flowbits allow one IDS rule to affect subsequent rules.  The following list is of rules which ' .
+                                          'test the value of flowbits but where no active rule sets the flowbit.  Either the rule testing ' .
+                                          'the flowbit should be disabled or the rule setting the flowbit should be enabled.',
+'snrtupd flowbit file not found' => 'There are no flowbit warnings at this time.',
+'snrtupd name' => 'Name',
+'snrtupd state' => 'State',
+'snrtupd type' => 'Type',
+'snrtupd group' => 'Group',
+'snrtupd test' => 'Test',
+'snrtupd set' => 'Set/Unset',
+'snrtupd flowbit update time' => 'Flowbit warnings updated at'
+);

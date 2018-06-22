@@ -1,0 +1,486 @@
+#!/usr/bin/perl
+#
+# SmoothWall CGIs
+#
+# This code is distributed under the terms of the GPL
+#
+# (c) The SmoothWall Team
+#
+# Copyright (C) 18-03-2002 Mark Wormgoor <mark@wormgoor.com>
+#              - Added links to Snort database and ipinfo.cgi
+#
+# $Id: ids.dat,v 1.6.2.16 2005/06/14 08:25:30 eoberlander Exp $
+#
+
+use strict;
+
+# enable only the following on debugging purpose
+#use warnings;
+use CGI::Carp 'fatalsToBrowser';
+use Sort::Naturally;
+
+require '/var/ipfire/general-functions.pl';
+require "${General::swroot}/lang.pl";
+require "${General::swroot}/header.pl";
+
+my %color = ();
+my %mainsettings = ();
+&General::readhash("${General::swroot}/main/settings", \%mainsettings);
+&General::readhash("/srv/web/ipfire/html/themes/".$mainsettings{'THEME'}."/include/colors.txt", \%color);
+
+use POSIX();
+
+#workaround to suppress a warning when a variable is used only once
+my @dummy = ( ${Header::table1colour}, ${Header::table2colour} );
+undef (@dummy);
+
+my %cgiparams=();
+my %logsettings=();
+my @updates=();
+my @new_enabled=();
+my @new_disabled=();
+my @deleted=();
+my @consider_enable=();
+my @consider_disable=();
+my @enabled=();
+my @disabled=();
+my $active_rules = 0;
+my $errormessage = '';
+my @unrecognised = ();
+
+my @shortmonths = ( 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+	'Sep', 'Oct', 'Nov', 'Dec' );
+my @longmonths = ( $Lang::tr{'january'}, $Lang::tr{'february'}, $Lang::tr{'march'},
+	$Lang::tr{'april'}, $Lang::tr{'may'}, $Lang::tr{'june'}, $Lang::tr{'july'}, $Lang::tr{'august'},
+	$Lang::tr{'september'}, $Lang::tr{'october'}, $Lang::tr{'november'},
+	$Lang::tr{'december'} );
+
+my @now = localtime(time);
+my $dow = $now[6];
+my $doy = $now[7];
+my $tdoy = $now[7];
+my $year = $now[5]+1900;
+
+$cgiparams{'DAY'} = $now[3];
+$cgiparams{'MONTH'} = $now[4];
+$cgiparams{'ACTION'} = '';
+
+&Header::getcgihash(\%cgiparams);
+$logsettings{'LOGVIEW_REVERSE'} = 'off';
+&General::readhash("${General::swroot}/logging/settings", \%logsettings);
+${Header::viewsize} = defined ($logsettings{'LOGVIEW_VIEWSIZE'}) ? $logsettings{'LOGVIEW_VIEWSIZE'} : 150;
+$Header::viewsize /= 5;	# each ids is displayed on 5 lines
+
+$now[4] = $cgiparams{'MONTH'}+1;
+if($now[4] < 10) {
+        $now[4] = "0$now[4]"; }
+
+my $start = -1;
+if ($ENV{'QUERY_STRING'} && $cgiparams{'ACTION'} ne $Lang::tr{'update'})
+{
+	my @temp = split(',',$ ENV{'QUERY_STRING'});
+ 	$start = $temp[0];
+ 	$cgiparams{'MONTH'} = $temp[1];
+ 	$cgiparams{'DAY'} = $temp[2];  
+}
+
+if (!($cgiparams{'MONTH'} =~ /^(0|1|2|3|4|5|6|7|8|9|10|11)$/) ||
+        !($cgiparams{'DAY'} =~ /^(1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)$/))
+{
+        $cgiparams{'DAY'} = $now[3];
+        $cgiparams{'MONTH'} = $now[4];
+}
+elsif($cgiparams{'ACTION'} eq '>>')
+{
+        my @temp_then=();
+        my @temp_now = localtime(time);
+        $temp_now[4] = $cgiparams{'MONTH'};
+        $temp_now[3] = $cgiparams{'DAY'};
+        @temp_then = localtime(POSIX::mktime(@temp_now) + 86400);
+           ## Retrieve the same time on the next day +
+           ## 86400 seconds in a day
+        $cgiparams{'MONTH'} = $temp_then[4];
+        $cgiparams{'DAY'} = $temp_then[3];
+}
+elsif($cgiparams{'ACTION'} eq '<<')
+{
+        my @temp_then=();
+        my @temp_now = localtime(time);
+        $temp_now[4] = $cgiparams{'MONTH'};
+        $temp_now[3] = $cgiparams{'DAY'};
+        @temp_then = localtime(POSIX::mktime(@temp_now) - 86400);
+           ## Retrieve the same time on the previous day -
+           ## 86400 seconds in a day
+        $cgiparams{'MONTH'} = $temp_then[4];
+        $cgiparams{'DAY'} = $temp_then[3];
+}
+
+
+if (($cgiparams{'DAY'} ne $now[3]) || ($cgiparams{'MONTH'} ne $now[4]))
+{
+	my @then = ();
+	if ( (  $cgiparams{'MONTH'} eq $now[4]) && ($cgiparams{'DAY'} > $now[3]) ||
+			( $cgiparams{'MONTH'} > $now[4] ) ) {
+		@then = localtime(POSIX::mktime( 0, 0, 0, $cgiparams{'DAY'}, $cgiparams{'MONTH'}, $year - 1901 ));
+	} else {
+		@then = localtime(POSIX::mktime( 0, 0, 0, $cgiparams{'DAY'}, $cgiparams{'MONTH'}, $year - 1900 ));
+	}
+	$tdoy = $then[7];
+	my $lastleap=($year-1)%4; 
+        if ($tdoy>$doy) {
+		if ($lastleap == 0 && $tdoy < 60) {
+			$doy=$doy+366;
+		} else {
+			$doy=$doy+365;
+		}
+	}
+}
+my $datediff=0;
+my $dowd=0;
+my $multifile=0;
+if ($tdoy ne $doy) {
+	$datediff=int(($doy-$tdoy)/7);
+	$dowd=($doy-$tdoy)%7;
+        if (($dow-$dowd)<1) {
+		$datediff=$datediff+1;
+	}
+	if (($dow-$dowd)==0) {
+		$multifile=1;
+	}
+}
+
+my $longmonthstr = $longmonths[$cgiparams{'MONTH'}];
+my $monthnum = $cgiparams{'MONTH'} + 1;
+my $monthstr = $shortmonths[$cgiparams{'MONTH'}];
+my $daystr =  $cgiparams{'DAY'} == 0 ?  '..' : $cgiparams{'DAY'} <= 9 ? " $cgiparams{'DAY'}" : "$cgiparams{'DAY'}";
+
+my $lines = 0;
+my ($title,$classification,$priority,$date,$time,$srcip,$srcport,$destip,$destport, $sid, @refs);
+
+&processevent;
+
+if ($multifile) {
+	$datediff=$datediff-1;
+	&processevent;
+}
+
+if ($cgiparams{'ACTION'} eq $Lang::tr{'export'})
+{
+	print "Content-type: text/plain\n\n";
+	print "IPFire IDS snort update log\r\n";
+	print "Date: $cgiparams{'DAY'} $longmonths[$cgiparams{'MONTH'}]\r\n"; 
+	print "\r\n";
+
+#	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @log = reverse @log; }
+
+#	foreach $_ (@log)
+#	{
+#		my ($datetime,$title,$priority,$classification,$srcip,$srcport,$destip,$destport,$sid,$refs) = split(/\|/);
+#		$refs =~ s/,$//;
+#		print "Date: $datetime\n";
+#		print "Name: $title\n";
+#		print "Priority: $priority\n";
+#		print "Type: $classification\n";
+#		print "IP Info: ";
+#		print "$srcip";
+#		if ($srcport != "n/a") {
+#			print ":$srcport";
+#		}
+#		print " -> ";
+#		print "$destip";
+#		if ($destport != "n/a") {
+#			print ":$destport";
+#		}
+#		print "\n";
+#		print "SID: $sid\n";
+#		print "Refs: $refs\n\n";
+#	}
+#
+#	exit;
+}
+
+&Header::showhttpheaders();
+
+&Header::openpage($Lang::tr{'snrtupd ids update log viewer'}, 1, '');
+
+&Header::openbigbox('100%', 'left', '', $errormessage);
+
+if ($errormessage) {
+	&Header::openbox('100%', 'left', $Lang::tr{'error messages'});
+	print "<font class='base'>$errormessage&nbsp;</font>\n";
+	&Header::closebox();
+}
+
+&Header::openbox('100%', 'left', "$Lang::tr{'settings'}:");
+
+print <<END
+<form method='post' action="$ENV{'SCRIPT_NAME'}">
+<table width='100%'>
+<tr>
+	<td width='10%' class='base'>$Lang::tr{'month'}:&nbsp;</td>
+	<td width='10%'>
+	<select name='MONTH'>
+END
+;
+for (my $month = 0; $month < 12; $month++)
+{
+	print "\t<option ";
+	if ($month == $cgiparams{'MONTH'}) {
+		print 'selected="selected" '; }
+	print "value='$month'>$longmonths[$month]</option>\n";
+}
+print <<END
+	</select>
+	</td>
+	<td width='10%' class='base' align='right'>&nbsp;$Lang::tr{'day'}:&nbsp;</td>
+	<td width='40%'>
+	<select name='DAY'>
+END
+;
+for (my $day = 1; $day <= 31; $day++) 
+{
+	print "\t<option ";
+	if ($day == $cgiparams{'DAY'}) {
+		print 'selected="selected" '; }
+	print "value='$day'>$day</option>\n";
+}
+print <<END
+	</select>
+	</td>
+	<td width='5%' align='center'><input type='submit' name='ACTION' title='$Lang::tr{'day before'}' value='&lt;&lt;' /></td>
+        <td width='5%' align='center'><input type='submit' name='ACTION' title='$Lang::tr{'day after'}' value='&gt;&gt;' /></td>
+	<td width='10%' align='center'><input type='submit' name='ACTION' value='$Lang::tr{'update'}' /></td>
+	<td width='10%' align='center'><input type='submit' name='ACTION' value='$Lang::tr{'export'}' /></td>
+</tr>
+</table>
+</form>
+END
+;
+
+&Header::closebox();
+
+Header::openbox('100%', 'left', $Lang::tr{'log'});
+print "<p><b>$Lang::tr{'snrtupd updates'} $longmonthstr $daystr: " . scalar( @updates ) . "</b></p>";
+
+if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @updates = reverse @updates; }
+
+if (@updates != 0) {
+
+	$lines = 0;
+
+	print <<END
+<table width='100%' class='tbl'>
+<th align='center' class='boldbase'><b>$Lang::tr{'time'}</b></th>
+<th align='center' class='boldbase'><b>$Lang::tr{'snrtupd ruleset'}</b></th>
+END
+	;
+
+	foreach $_ (@updates)
+	{
+		if ($lines % 2) {
+			print "<tr bgcolor='$color{'color20'}'><td>\n"; }
+		else {
+			print "<tr bgcolor='$color{'color22'}'><td>\n"; }
+	        my ($time, $ruleset) = split /\|\|/, $_;
+        	print "$time</td><td>$ruleset";
+		print <<END
+</td></tr>
+END
+		;
+		$lines++;
+	}
+
+	print "</table>";
+
+	print "<p><b>$Lang::tr{'snrtupd active rules'} $active_rules</b></p>";
+	
+	print "<p><b>$Lang::tr{'snrtupd unrecognised log messages'}:</b></p><table class=\"tbl\">" if (@unrecognised);
+	foreach $_ (@unrecognised)
+	{
+	  my ($time, $message) = split /\|\|/, $_;
+      if ($lines % 2) {
+        print "<tr bgcolor='$color{'color20'}'><td style=\"vertical-align:top;\">\n"; }
+      else {
+		print "<tr bgcolor='$color{'color22'}'><td style=\"vertical-align:top;\">\n"; }
+      print "$time</td><td>$message</td></tr>";
+      
+      $lines++;
+	}
+	print "</table>" if (@unrecognised);
+}
+
+	
+if (-e "/var/tmp/flowbit-warnings.txt")
+{
+  print "<br /><p><a href=\"/cgi-bin/idsflowbits.cgi\" target=\"_blank\"><b>$Lang::tr{'snrtupd flowbit warnings'}</b></a></p>";
+}
+
+&Header::closebox();
+
+if (@updates)
+{
+	Header::openbox('100%', 'left', $Lang::tr{'snrtupd new rules'});
+	print "<p><b>$Lang::tr{'snrtupd enabled'}</b></p>";
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @new_enabled = reverse @new_enabled; }
+
+	show_table( "SID||$Lang::tr{'name'}", @new_enabled );
+	
+	print "<br /><p><b>$Lang::tr{'snrtupd disabled'}</b></p>";
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @new_disabled = reverse @new_disabled; }
+
+	show_table( "SID||$Lang::tr{'name'}", @new_disabled );
+
+    Header::closebox();
+
+	Header::openbox('100%', 'left', $Lang::tr{'snrtupd deleted rules'});
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @deleted = reverse @deleted; }
+
+	show_table( "SID||$Lang::tr{'name'}", @deleted );
+
+	&Header::closebox();
+	
+	Header::openbox('100%', 'left', $Lang::tr{'snrtupd updated rules'});
+	
+	#--
+	
+	print "<p><b>$Lang::tr{'snrtupd changed enabled'}</b></p>";
+	print "<p>$Lang::tr{'snrtupd consider disabling'}</b>" if (@consider_disable);
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @consider_disable = reverse @consider_disable; }
+
+	show_table( "SID||$Lang::tr{'snrtupd change'}||$Lang::tr{'snrtupd from'}||$Lang::tr{'snrtupd to'}||$Lang::tr{'name'}", @consider_disable );
+
+	#--
+	
+	print "<br /><p><b>$Lang::tr{'snrtupd changed disabled'}</b></p>";
+	print "<p>$Lang::tr{'snrtupd consider enabling'}</b>" if (@consider_enable);
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @consider_enable = reverse @consider_enable; }
+
+	show_table( "SID||$Lang::tr{'snrtupd change'}||$Lang::tr{'snrtupd from'}||$Lang::tr{'snrtupd to'}||$Lang::tr{'name'}", @consider_enable );
+	
+	#--
+
+	print "<br /><p><b>$Lang::tr{'snrtupd enabled'}</b></p>";
+	print "<p>$Lang::tr{'snrtupd enabled due to policy change'}</b>" if (@enabled);
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @enabled = reverse @enabled; }
+
+	show_table( "SID||$Lang::tr{'snrtupd change'}||$Lang::tr{'snrtupd from'}||$Lang::tr{'snrtupd to'}||$Lang::tr{'name'}", @enabled );
+	
+	#--
+
+	print "<br /><p><b>$Lang::tr{'snrtupd disabled'}</b></p>";
+	print "<p>$Lang::tr{'snrtupd disabled due to policy changed'}</b>" if (@disabled);
+
+	if ($logsettings{'LOGVIEW_REVERSE'} eq 'on') { @disabled = reverse @disabled; }
+
+	show_table( "SID||$Lang::tr{'snrtupd change'}||$Lang::tr{'snrtupd from'}||$Lang::tr{'snrtupd to'}||$Lang::tr{'name'}", @disabled );
+
+	&Header::closebox();
+}
+
+&Header::closebigbox();
+
+&Header::closepage();
+
+sub processevent
+{
+	my $filestr='';
+	if ($datediff==0) {
+		$filestr="/var/log/messages";
+	} else {
+		$filestr="/var/log/messages.$datediff";
+		$filestr = "$filestr.gz" if -f "$filestr.gz";
+	}
+	if (!(open (LOG,($filestr =~ /.gz$/ ? "gzip -dc $filestr |" : $filestr)))) {
+		$errormessage="$errormessage$Lang::tr{'date not in logs'}: $filestr $Lang::tr{'could not be opened'}";
+	} else {
+		my $line = 0;
+
+		while(<LOG>) {
+
+                next unless ($_ =~ m/snortupdate/);
+                next unless ($_ =~ m/^${monthstr} ${daystr} (..:..:..) ipfire snortupdate: (.*)/);
+
+                my $time = $1;
+
+                if ($_ =~ m/Completed update:\s*(\d+)/) {
+                  $active_rules = $1;
+                } elsif ($_ =~ m/Download (.+) rules/) {
+                  push @updates, "$time||$1";
+                } elsif ($_ =~ m/Enabled new rule (sid:\d+) (.+)/) {
+                  push @new_enabled, "$1||$2";
+                } elsif ($_ =~ m/Deleted rule (sid:\d+) (.+)/) {
+                  push @deleted, "$1||$2";
+                } elsif ($_ =~ m/Enabled rule (sid:\d+) changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
+                  push @consider_disable, "$1||$2||$3||$4||$5";
+                } elsif ($_ =~ m/Disabled rule (sid:\d+) changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
+                  push @consider_enable, "$1||$2||$3||$4||$5";
+                } elsif ($_ =~ m/Disabled new rule (sid:\d+) (.+)/) {
+                  push @new_disabled, "$1||$2";
+                } elsif ($_ =~ m/Enabled rule (sid:\d+) due to changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
+                  push @enabled, "$1||$2||$3||$4||$5";
+                } elsif ($_ =~ m/Disabled rule (sid:\d+) due to changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
+                  push @disabled, "$1||$2||$3||$4||$5";
+                } elsif ($_ !~ m/Starting Snort update check|No updates available|Checking that Snort is running correctly/ and
+                         $_ !~ m/Getting current rule state|Updating.*rules|Getting rule changes|Writing new update/        and
+                         $_ !~ m/Telling Snort pid \d+ to re-read rules|Stopping Snort|Starting Snort/) {
+                  push @unrecognised, "$time||$2"; }
+                }
+	close(LOG);
+	}
+}
+
+sub show_table()
+{
+  my ($titles, @rows) = @_;
+  
+  if (@rows) {
+    my $lines = 0;
+
+    print <<END
+<table width='100%' class='tbl'><tr><th align='center' class='boldbase'><b>
+END
+	;
+    print join "</b></th><th align='center' class='boldbase'><b>", split /\|\|/, $titles;
+    print "</b></th></tr>";
+
+	foreach $_ (nsort @rows)
+    {
+      if ($_ =~ m/sid:(\d+)/)
+      {
+        if ($1 < 1000000)
+        {
+          $_ =~ s|sid:(\d+)|<a href="https://www.snort.org/rule-docs/1-\1" target="_blank">\1</a>|;
+        }
+        elsif ($1 >= 2000000 and $1 < 3000000)
+        {
+          $_ =~ s|sid:(\d+)|<a href="http://doc.emergingthreats.net/\1" target="_blank">\1</a>|;
+        }
+        else
+        {
+          $_ =~ s|sid:(\d+)|\1|;
+        }
+      }
+    
+      if ($lines % 2) {
+        print "<tr bgcolor='$color{'color20'}'><td>\n"; }
+      else {
+		print "<tr bgcolor='$color{'color22'}'><td>\n"; }
+	  print join "</td><td>", split /\|\|/, $_;
+      print <<END
+</td></tr>
+END
+      ;
+      $lines++;
+    }
+
+	print "</table>";
+  } else {
+    print "<p>$Lang::tr{'snrtupd none found'}</p>";
+  }
+}
