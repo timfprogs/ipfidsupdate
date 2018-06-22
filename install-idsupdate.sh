@@ -70,7 +70,6 @@ if [[ $phase2 == "no" ]]; then
   while read -r name path owner mode || [[ -n "$name" ]]; do
     echo --
     echo Download $name
-    path=/home/tim/Programs/Snort_Update/install$path
     if [[ ! -d $path ]]; then mkdir -p $path; fi
     wget "https://github.com/timfprogs/ipfidsupdate/raw/master/$name" -O $path/$name
     chown $owner $path/$name
