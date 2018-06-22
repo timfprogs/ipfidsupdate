@@ -144,11 +144,11 @@ done
  
 case $new_rate in
   h* | H* ) RATE=HOURLY
-            CRONTAB="%hourly,nice(1),random(true),serialonce(true) 15-45 /usr/bin/snort-update.pl";;
+            CRONTAB="%hourly,nice(1),random(true),serialonce(true) 15-45 /usr/local/bin/snort-update.pl";;
   d* | D* ) RATE=DAILY
-            CRONTAB="%nightly,nice(1),random(true),serialonce(true) 15-45 23-4 /usr/bin/snort-update.pl";;
+            CRONTAB="%nightly,nice(1),random(true),serialonce(true) 15-45 23-4 /usr/local/bin/snort-update.pl";;
   w* | W* ) RATE=WEEKLY
-            CRONTAB="%dow,bootrun(true),nice(1),random(true),serialonce(true) 15-45 23-4 * * sat,sun /usr/bin/snort-update.pl";;
+            CRONTAB="%dow,bootrun(true),nice(1),random(true),serialonce(true) 15-45 23-4 * * sat,sun /usr/local/bin/snort-update.pl";;
 esac
  
 cat <<END
