@@ -1607,7 +1607,6 @@ sub get_rule( $ )
 
     # Line is part of a rule
     
-    $line =~ s/^#\s+//;
     $current_rule .= $line;
 
     if ($line =~ m/\\$/)
@@ -1626,6 +1625,7 @@ sub get_rule( $ )
 
   $enabled = 1 if ($current_rule !~ m/^#/);
   
+  $current_rule =~ s/^#\s*//;
   $current_rule =~ s/^[^(]*\(//;
   $current_rule =~ s/\)[^)]*$//;
   
