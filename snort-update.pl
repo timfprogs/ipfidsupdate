@@ -1351,6 +1351,8 @@ sub parse_rule_file_pass_2( $ )
       
       if ($rules{$sid}{'enabled'})
       {
+        $rules{$sid}{'status'} = 'enabled';
+        
         if ($$options{'policy'} > $base_policy)
         {
           # Should it be disabled?
@@ -1427,8 +1429,6 @@ sub parse_rule_file_pass_2( $ )
       }
       else
       {
-        push @{ $disabled_sids{$type} }, $sid;
-      
         $rules{$sid}{'status'} = 'disabled';
         
         if ($$options{'policy'} < $base_policy)
