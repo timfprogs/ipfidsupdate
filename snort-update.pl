@@ -1046,8 +1046,6 @@ sub check_for_updates( $ )
     }
   }
 
-  my $vrt_type = $snort_settings{RULES} eq 'registered' ? 'registered' : 'subscribed';
-  
   # Check for updates
   
   if ($found_vrt and $snort_settings{OINKCODE})
@@ -1059,7 +1057,7 @@ sub check_for_updates( $ )
     download_update( "https://www.snort.org/rules/snortrules-snapshot-$vrt_v.tar.gz.md5\?oinkcode=$snort_settings{OINKCODE}",
                      "https://www.snort.org/rules/snortrules-snapshot-$vrt_v.tar.gz?oinkcode=$snort_settings{OINKCODE}",
                      "talos_vrt",
-                     "Talos VRT $vrt_type" );
+                     "Talos VRT registered or subscribed" );
   }
   
   if ($found_emerging and (not $found_community) and (not $found_vrt))
@@ -1160,7 +1158,7 @@ sub generate_oinkmaster_config( )
     
     open NEW_CONF, ">", $conf_file or abort "Can't open new config file $conf_file: $!";
 
-    debug 1, "Update Oinkmaster configuration";
+    debug 1, "Update $name Oinkmaster configuration";
     
     # Write the list of enabled and disabled SIDs
     
