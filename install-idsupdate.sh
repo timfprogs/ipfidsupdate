@@ -3,10 +3,10 @@
 # Locations of settings files
 updatedir="/var/ipfire/snortupdate"
 updatesettings="$updatedir/settings"
-mailfile="/var/ipfire/mail/mail.conf"
+mailfile="/var/ipfire/dma/mail.conf"
 qossettings="/var/ipfire/qos/settings"
 temp_dir="$TMP"
-VERSION=0
+VERSION=1
  
 phase2="no"
  
