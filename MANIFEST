@@ -3,4 +3,4 @@ ids-update.en.pl /var/ipfire/addon-lang root.root 0004
 idsflowbits.cgi /srv/web/ipfire/cgi-bin root.root 0755
 idsupdate.dat /srv/web/ipfire/cgi-bin/logs.cgi root.root 0755
 EX-idsupdate.menu /var/ipfire/menu.d nobody.nobody 644
-install=idsupdate.sh . root.root 0755
+install-idsupdate.sh . root.root 0755
