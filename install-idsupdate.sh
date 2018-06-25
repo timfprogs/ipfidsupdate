@@ -46,7 +46,8 @@ if [[ $phase2 == "no" ]]; then
   wget "https://github.com/timfprogs/ipfidsupdate/raw/master/VERSION"
   
   NEW_VERSION=`cat VERSION`
-
+  rm VERSION
+  
   # Set phase2 to yes to stop download of update
   
   if [[ $VERSION -eq $NEW_VERSION ]]; then
@@ -80,7 +81,6 @@ if [[ $phase2 == "no" ]]; then
 
   # Tidy up
 
-  rm VERSION
   rm MANIFEST
  
   # Run the second phase of the new install file
