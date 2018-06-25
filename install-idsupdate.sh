@@ -6,7 +6,6 @@ updatesettings="$updatedir/settings"
 mailfile="/var/ipfire/dma/mail.conf"
 qossettings="/var/ipfire/qos/settings"
 temp_dir="$TMP"
-VERSION=1
  
 phase2="no"
  
@@ -26,7 +25,10 @@ if [[ -e $updatesettings ]]; then
   echo read old settings
   source $updatesettings
 fi
- 
+
+# Override the version
+VERSION=1
+
 while getopts ":2hH" opt; do
   case $opt in
   2) phase2="yes";;
@@ -117,7 +119,7 @@ function yesno
  
 #--------------------------------------------------------------------
 # Start of questions for update settings
-#--------------------------------------------------------------------/home/tim/Programs/Snort_Update/install/var/update/qos/settings
+#--------------------------------------------------------------------
  
 cat <<END
  
@@ -237,13 +239,13 @@ You should probably only enable emails if you a confident of the
 security of your email infrastructure.
  
 END
- 
-    yesno "Do you want to send update notification emails" $UPDATE_EMAIL UPDATE_EMAIL
+
+    yesno "Do you want to send update notification emails" "$EMAIL" EMAIL
   else
-    UPDATE_EMAIL=off
+    EMAIL=off
   fi
 else
-  UPDATE_EMAIL=off
+  EMAIL=off
 fi
  
 cat <<END
@@ -260,7 +262,7 @@ than stopping Snort and then re-starting it.
 
 END
  
-yesno "Do you want to perform a live update of the rules" $LIVE_UPDATE LIVE_UPDATE
+yesno "Do you want to perform a live update of the rules" "$LIVE_UPDATE" LIVE_UPDATE
 
 cat <<END
  
@@ -275,7 +277,7 @@ selected default policy and the new policy of the rule.
 
 END
 
-yesno "Do you want to apply policy changes to changed rules" $APPLY_POLICY_CHANGE APPLY_POLICY_CHANGE
+yesno "Do you want to apply policy changes to changed rules" "$APPLY_POLICY_CHANGE" APPLY_POLICY_CHANGE
 
 # Write the settings file
 
@@ -283,10 +285,10 @@ cat <<END > $updatesettings
 RATE=$RATE
 DOWNLOAD_LIMIT=$DOWNLOAD_LIMIT
 POLICY=$POLICY
-EMAIL=$UPDATE_EMAIL
+EMAIL=$EMAIL
 LIVE_UPDATE=$LIVE_UPDATE
 APPLY_POLICY_CHANGE=$APPLY_POLICY_CHANGE
-VERSION=$VERSION
+VERSION=$NEW_VERSION
 DEBUG=0
 END
 
