@@ -27,7 +27,7 @@ if [[ -e $updatesettings ]]; then
 fi
 
 # Override the version
-VERSION=1
+VERSION=2
 
 while getopts ":2hH" opt; do
   case $opt in
@@ -93,7 +93,7 @@ fi
 
 if [[ -e $qossettings ]]; then
   DOWNLOAD_LIMIT=`awk 'BEGIN{FS="="};/^INC_SPD/{print $2}' $qossettings`
-  DOWNLOAD_LIMIT=$(( $DOWNLOAD_LIMIT/2))
+  DOWNLOAD_LIMIT=$((${DOWNLOAD_LIMIT:-0}/2))
 fi
  
 # Function for a Yes/No setting
