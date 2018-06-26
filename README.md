@@ -8,17 +8,17 @@ of existing rules.
 
 Read the notes below before installing this addon.  Once you've done this you can proceed to the first step.
 
-First remove any automatic updater that you've already got running.
+1. First remove any automatic updater that you've already got running.
 
-Download the installer:
+2. Download the installer:
 
   ```wget https://github.com/timfprogs/ipfidsupdate/raw/master/install-idsupdate.sh```
   
-Make it executable:
+3. Make it executable:
 
   ```chmod +x install-idsupdate.sh```
 
-Run the installer:
+4. Run the installer:
 
   ```./install-idsupdate.sh```
 
