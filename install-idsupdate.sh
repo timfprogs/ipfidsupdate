@@ -17,6 +17,7 @@ POLICY="BALANCED"
 EMAIL="off"
 LIVE_UPDATE="on"
 APPLY_POLICY_CHANGE="on"
+VERSION=0
 
 if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi
 
@@ -25,9 +26,6 @@ if [[ -e $updatesettings ]]; then
   echo read old settings
   source $updatesettings
 fi
-
-# Override the version
-VERSION=2
 
 while getopts ":2hH" opt; do
   case $opt in
@@ -38,8 +36,7 @@ while getopts ":2hH" opt; do
 done
  
 if [[ $phase2 == "no" ]]; then
-  # Check to see whether the update code is installed, or if there's a new
-  # version available
+  # Check to see if there's a new version available
 
   echo Check for new version
 
@@ -61,7 +58,7 @@ if [[ $phase2 == "no" ]]; then
  
   wget "https://github.com/timfprogs/ipfidsupdate/raw/master/MANIFEST"
  
-  # Move files to their destinations
+  # Download and move files to their destinations
  
   echo Downloading files
  
@@ -74,7 +71,7 @@ if [[ $phase2 == "no" ]]; then
     echo --
     echo Download $name
     if [[ ! -d $path ]]; then mkdir -p $path; fi
-    wget "https://github.com/timfprogs/ipfidsupdate/raw/master/$name" -O $path/$name
+    if [[ $name != "." ]]; then wget "https://github.com/timfprogs/ipfidsupdate/raw/master/$name" -O $path/$name; fi
     chown $owner $path/$name
     chmod $mode $path/$name
   done < "MANIFEST"
