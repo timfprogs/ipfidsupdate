@@ -1,6 +1,12 @@
 $sublogs->{'52.idsupdate'} = {
-           'caption' => "$Lang::tr{'snrtupd ids update log'}",
+           'caption' => "$Lang::tr{'idsupdate ids update log'}",
            'uri' => '/cgi-bin/logs.cgi/idsupdate.dat',
-           'title' => "$Lang::tr{'snrtupd ids update log'}",
+           'title' => "$Lang::tr{'idsupdate ids update log'}",
            'enabled' => 1,
                                };
+$subservices->{'62.idsupdate'} = {
+               'caption' => $Lang::tr{'idsupdate ids update'},
+               'enabled' => 1,
+               'uri' => '/cgi-bin/idsupdate.cgi',
+               'title' => "$Lang::tr{'idsupdate ids update'}",
+                                  };

@@ -1,4 +1,5 @@
-snort-update.pl /usr/local/bin root.root 0755
+. /var/ipfire/idsupdate nobody.nobody 0755
+ids-update.pl /usr/local/bin root.root 0755
 ids-update.en.pl /var/ipfire/addon-lang root.root 0004
 ids-update.es.pl /var/ipfire/addon-lang root.root 0004
 ids-update.fr.pl /var/ipfire/addon-lang root.root 0004
@@ -7,3 +8,6 @@ idsflowbits.cgi /srv/web/ipfire/cgi-bin root.root 0755
 idsupdate.dat /srv/web/ipfire/cgi-bin/logs.cgi root.root 0755
 EX-idsupdate.menu /var/ipfire/menu.d nobody.nobody 644
 install-idsupdate.sh . root.root 0755
+ids-update /usr/share/logwatch/scripts/services root.root 0644
+ids-update.conf /usr/share/logwatch/dist.conf/services 0644
+idsupdate.cgi /srv/web/ipfire/cgi-bin root.root 0755
