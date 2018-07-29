@@ -7,6 +7,9 @@ mailfile="/var/ipfire/dma/mail.conf"
 qossettings="/var/ipfire/qos/settings"
 temp_dir="$TMP"
 
+# Branch to use from repository
+branch=version3
+
 phase2="no"
 
 # Default update settings
@@ -40,7 +43,7 @@ if [[ $phase2 == "no" ]]; then
 
   echo Check for new version
 
-  wget "https://github.com/timfprogs/ipfidsupdate/raw/master/VERSION"
+  wget "https://github.com/timfprogs/ipfidsupdate/raw/$branch/VERSION"
 
   NEW_VERSION=`cat VERSION`
   rm VERSION
@@ -81,7 +84,7 @@ PERM
 
   # Download the manifest
 
-  wget "https://github.com/timfprogs/ipfidsupdate/raw/master/MANIFEST"
+  wget "https://github.com/timfprogs/ipfidsupdate/raw/$branch/MANIFEST"
 
   # Download and move files to their destinations
 
@@ -96,7 +99,7 @@ PERM
     echo --
     echo Download $name
     if [[ ! -d $path ]]; then mkdir -p $path; fi
-    if [[ $name != "." ]]; then wget "https://github.com/timfprogs/ipfidsupdate/raw/master/$name" -O $path/$name; fi
+    if [[ $name != "." ]]; then wget "https://github.com/timfprogs/ipfidsupdate/raw/$branch/$name" -O $path/$name; fi
     chown $owner $path/$name
     chmod $mode $path/$name
   done < "MANIFEST"
