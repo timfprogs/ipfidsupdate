@@ -5,7 +5,7 @@
 #########################################################################
 
 ########################################################
-## Copyright (c) 2008 Lars Skjærlund
+## Copyright (c) 2008 Lars SkjÃ¦rlund
 ## Covered under the included MIT/X-Consortium License:
 ##    http://www.opensource.org/licenses/mit-license.php
 ## All modifications and contributions by other persons to
@@ -51,9 +51,9 @@ my %Errors;
 $SearchDate = TimeFilter("%b %e");
 
 while (defined(my $ThisLine = <STDIN>)) {
-      next unless ($ThisLine =~ m/^\s*\w+ \w+ (..:..:..) ipfire idsupdate: (.*)/);
+      next unless ($ThisLine =~ m/^\s*\w+\s+\w+\s+\d+:\d+:\d+ ipfire idsupdate: (.*)/);
 
-      my $text = $2;
+      my $text = $1;
 
       if ($ThisLine =~ m/Completed update:\s*(\d+)/) {
         $Active_rules = $1;
