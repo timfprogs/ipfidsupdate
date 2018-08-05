@@ -71,13 +71,14 @@ RENAME
   while read -r file owner mode || [[ -n "$file" ]]; do
     if [[ -e $file ]];
     then
-      chown $file $owner
-      chmod $file $perm;
+      chown $owner $file
+      chmod $mode $file;
     fi
   done <<-PERM
   /var/tmp/community-rules.tar.gz nobody.nobody 0644
   /var/tmp/emerging.rules.tar.gz nobody.nobody 0644
   /var/tmp/snortrules-snapshot-29111.tar.gz nobody.nobody 0644
+  /var/ipfire/idsupdate nobody.nobody 0755
 PERM
 
   chown nobody.nobody /etc/snort/rules/*
