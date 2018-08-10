@@ -53,8 +53,8 @@ if [[ $phase2 == "no" ]]; then
     if [[ -e $old ]]; then mv $old $new; fi
   done <<-RENAME
   /usr/local/bin/snort-update.pl /usr/local/bin/ids-update.pl
-  /var/ipfile/snortupdate /var/ipfire/idsupdate
-  /var/ipfile/snortupdate/settings /var/ipfire/idsupdate/settings
+  /var/ipfire/snortupdate /var/ipfire/idsupdate
+  /var/ipfire/snortupdate/settings /var/ipfire/idsupdate/settings
 RENAME
 
   # Change some permissions
@@ -74,7 +74,7 @@ RENAME
 PERM
 
   chown nobody.nobody /etc/snort/rules/*
-  if [[ -d /var/ipfile/snortupdate/settings ]]; rmdir /var/ipfile/snortupdate/settings; fi
+  if [[ -d /var/ipfire/snortupdate/settings ]]; then rmdir /var/ipfire/snortupdate/settings; fi
 
   # Download the manifest
 
