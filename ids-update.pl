@@ -73,6 +73,23 @@ my $emerging_threats_snort_version = "2.9.0";
 my $talos_vrt_snort_version        = "29111";
 
 ############################################################################
+# Constants
+############################################################################
+
+use constant MESSAGE    =>  0;
+use constant ENABLED    =>  1;
+use constant PRIORITY   =>  2;
+use constant REVISION   =>  3;
+use constant CLASSTYPE  =>  4;
+use constant POLICY     =>  5;
+use constant RULESET    =>  6;
+use constant STATUS     =>  7;
+use constant CHANGE_KEY =>  8;
+use constant FROM       =>  9;
+use constant TO         => 10;
+use constant ACTIVE     => 11;
+
+############################################################################
 # Function prototypes
 ############################################################################
 
@@ -490,10 +507,10 @@ sub check_for_deleted_rules()
 {
   foreach my $sid ( sort keys %rules )
   {
-    if ($rules{$sid}{'status'} eq 'old')
+    if ($rules{$sid}[STATUS] eq 'old' and $rules{$sid}[ACTIVE])
     {
-      $rules{$sid}{'status'} = 'delete';
-      log_message LOG_INFO, "Deleted rule sid:$sid $rules{$sid}{'message'}";
+      $rules{$sid}[STATUS] = 'delete';
+      log_message LOG_INFO, "Deleted rule sid:$sid $rules{$sid}[MESSAGE]" if (exists $rules{$sid}[MESSAGE]);
       $changed_sids++;
     }
   }
@@ -556,7 +573,7 @@ sub restart_snort()
       @fields    = split /\s+/, $line;
 
       $cpu       = $fields[13];
-      $mem       = $fields[22];
+      $mem       = $fields[23];
 
       log_message LOG_INFO, "Telling Snort pid $pid to re-read rules";
 
@@ -626,7 +643,8 @@ sub restart_snort()
 sub check_running()
 {
   my $number_not_running = 0;
-  my $last_not_running  = 0;
+  my $last_not_running   = 0;
+  my $expected_running   = 0;
 
   log_message LOG_INFO, "Checking that Snort is running correctly";
 
@@ -638,34 +656,64 @@ sub check_running()
 
     $last_not_running   = $number_not_running;
     $number_not_running = 0;
+    $expected_running   = 0;
 
-    if ($snort_settings{'ENABLE_SNORT_GREEN'} eq 'on' and not -e "/var/run/snort_green0.pid")
+    if ($snort_settings{'ENABLE_SNORT_GREEN'} eq 'on')
     {
-      log_message LOG_ERR, "Snort not running on green";
-      $number_not_running++;
+      if (not -e "/var/run/snort_green0.pid")
+      {
+        log_message LOG_ERR, "Snort not running on green";
+        $number_not_running++;
+      }
+
+      $expected_running++;
     }
 
-    if ($snort_settings{'ENABLE_SNORT_BLUE'} eq 'on' and not -e "/var/run/snort_blue0.pid")
+    if ($snort_settings{'ENABLE_SNORT_BLUE'} eq 'on')
     {
-      log_message LOG_ERR, "Snort not running on blue";
-      $number_not_running++;
+      if (not -e "/var/run/snort_blue0.pid")
+      {
+        log_message LOG_ERR, "Snort not running on blue";
+        $number_not_running++;
+      }
+
+      $expected_running++;
     }
 
-    if ($snort_settings{'ENABLE_SNORT_ORANGE'} eq 'on' and not -e "/var/run/snort_orange0.pid")
+    if ($snort_settings{'ENABLE_SNORT_ORANGE'} eq 'on')
     {
-      log_message LOG_ERR, "Snort not running on orange";
-      $number_not_running++;
+      if (not -e "/var/run/snort_orange0.pid")
+      {
+        log_message LOG_ERR, "Snort not running on orange";
+        $number_not_running++;
+      }
+
+      $expected_running++;
     }
 
-    if ($snort_settings{'ENABLE_SNORT'} eq 'on' and not -e "/var/run/snort_red0.pid" and not -e "/var/run/snort_ppp0.pid")
+    if ($snort_settings{'ENABLE_SNORT'} eq 'on')
     {
-      log_message LOG_ERR, "Snort not running on red";
-      $number_not_running++;
+      if (not -e "/var/run/snort_red0.pid" and not -e "/var/run/snort_ppp0.pid")
+      {
+        log_message LOG_ERR, "Snort not running on red";
+        $number_not_running++;
+      }
+
+      $expected_running++;
     }
 
     sleep 60 if ($number_not_running != 0);
   }
   while (($number_not_running != $last_not_running) and ($number_not_running > 0));
+
+  # Also check that the right number of processes are running
+  # This is because the Out-Of-Memory process killer does not delete the pid
+  # file when it kills a process
+
+  if ($number_not_running == 0)
+  {
+    $number_not_running = $expected_running - qx/ps -C snort -o pid --no-headers | wc -l/;
+  }
 
   if ($number_not_running > 0)
   {
@@ -1278,6 +1326,7 @@ sub parse_rule_file_pass_1( $ )
 
   my $sid;
   my $options;
+  my $active_rule_file = $enabled_rule_files{basename $file};
 
   debug 2, "Parsing rule file - Pass 1 - $file";
 
@@ -1291,18 +1340,17 @@ sub parse_rule_file_pass_1( $ )
     {
       # Can get SIDs for community rules in more than one file
 
-      if ($$options{'enabled'})
+      if ($$options[ENABLED])
       {
-        $rules{$sid}{'enabled'} = 1;
+        $rules{$sid}[ENABLED] = 1;
       }
     }
     else
     {
-      $rules{$sid} = $options;
-      $rules{$sid}{'status'} = 'old';
+      $rules{$sid}         = $options;
+      $rules{$sid}[STATUS] = 'old';
+      $rules{$sid}[ACTIVE] = $active_rule_file;
     }
-
-    $rules{$sid}{'count'}++;
 
     ($sid, $options) = get_rule( \*RULES );
   }
@@ -1370,7 +1418,7 @@ sub parse_rule_file_pass_2( $ )
 
   while ($sid)
   {
-    if ($type eq "talos_vrt" and $fix_community_rules and $$options{'ruleset'} eq 'community')
+    if ($type eq "talos_vrt" and $fix_community_rules and $$options[RULESET] eq 'community')
     {
       # This is a community rule in a non-community rule file and we're using the
       # community rule file.  Force this rule to disabled so that we use the community
@@ -1390,11 +1438,11 @@ sub parse_rule_file_pass_2( $ )
 
       # Existing rule
 
-      if ($rules{$sid}{'enabled'})
+      if ($rules{$sid}[ENABLED])
       {
-        $rules{$sid}{'status'} = 'enabled';
+        $rules{$sid}[STATUS] = 'enabled';
 
-        if ($$options{'policy'} > $base_policy)
+        if ($$options[POLICY] > $base_policy)
         {
           # Should it be disabled?
           # Look for changed fields in an order that gives the most
@@ -1404,60 +1452,60 @@ sub parse_rule_file_pass_2( $ )
           # 3 - lower priority
           # 4 - revision changed
 
-          if ($$options{'classtype'} ne $rules{$sid}{'classtype'})
+          if ($$options[CLASSTYPE] ne $rules{$sid}[CLASSTYPE])
           {
-            $rules{$sid}{'change-key'} = 'Classtype';
-            $rules{$sid}{'from'}       = $rules{$sid}{'classtype'};
-            $rules{$sid}{'to'}         = $$options{'classtype'};
+            $rules{$sid}[CHANGE_KEY] = 'Classtype';
+            $rules{$sid}[FROM]       = $rules{$sid}[CLASSTYPE];
+            $rules{$sid}[TO]         = $$options[CLASSTYPE];
           }
-          elsif ($$options{'policy'} > $rules{$sid}{'policy'})
+          elsif ($$options[POLICY] > $rules{$sid}[POLICY])
           {
-            $rules{$sid}{'change-key'} = 'Policy';
-            $rules{$sid}{'from'}       = $policies[$rules{$sid}{'policy'}];
-            $rules{$sid}{'to'}         = $policies[$$options{'policy'}];
-            $policy_changed            = 1;
+            $rules{$sid}[CHANGE_KEY] = 'Policy';
+            $rules{$sid}[FROM]       = $policies[$rules{$sid}[POLICY]];
+            $rules{$sid}[TO]         = $policies[$$options[POLICY]];
+            $policy_changed          = 1;
           }
-          elsif ($$options{'priority'} > $rules{$sid}{'priority'})
+          elsif ($$options[PRIORITY] > $rules{$sid}[PRIORITY])
           {
-            $rules{$sid}{'change-key'} = 'Priority';
-            $rules{$sid}{'from'}       = $rules{$sid}{'priority'};
-            $rules{$sid}{'to'}         = $$options{'priority'};
+            $rules{$sid}[CHANGE_KEY] = 'Priority';
+            $rules{$sid}[FROM]       = $rules{$sid}[PRIORITY];
+            $rules{$sid}[TO]         = $$options[PRIORITY];
           }
-          elsif ($$options{'revision'} != $rules{$sid}{'revision'})
+          elsif ($$options[REVISION] != $rules{$sid}[REVISION])
           {
-            $rules{$sid}{'change-key'} = 'Revision';
-            $rules{$sid}{'from'}       = $rules{$sid}{'revision'};
-            $rules{$sid}{'to'}         = $$options{'revision'};
-            $revision_changed          = 1;
+            $rules{$sid}[CHANGE_KEY] = 'Revision';
+            $rules{$sid}[FROM]       = $rules{$sid}[REVISION];
+            $rules{$sid}[TO]         = $$options[REVISION];
+            $revision_changed        = 1;
           }
 
           if ($revision_changed)
           {
             if ($policy_changed and $update_settings{'APPLY_POLICY_CHANGE'} eq 'on')
             {
-              $rules{$sid}{'enabled'} = 0;
-              $rules{$sid}{'status'}  = 'disabled';
+              $rules{$sid}[ENABLED] = 0;
+              $rules{$sid}[STATUS]  = 'disabled';
 
               push @{ $disabled_sids{$type} }, $sid;
 
               if ($active_rule_file)
               {
-                log_message LOG_INFO, "Disabled rule sid:$sid due to changed $rules{$sid}{'change-key'} from $rules{$sid}{'from'} to $rules{$sid}{'to'}  $rules{$sid}{'message'}";
+                log_message LOG_INFO, "Disabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
               }
             }
             else
             {
               push @{ $enabled_sids{$type} }, $sid;
-              $rules{$sid}{'status'} = 'enabled';
+              $rules{$sid}[STATUS] = 'enabled';
 
-              if (exists $rules{$sid}{'change-key'})
+              if (exists $rules{$sid}[CHANGE_KEY])
               {
                 if ($active_rule_file)
                 {
-                  log_message LOG_INFO, "Enabled rule sid:$sid changed $rules{$sid}{'change-key'} from $rules{$sid}{'from'} to $rules{$sid}{'to'}  $rules{$sid}{'message'}";
+                  log_message LOG_INFO, "Enabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO] $$options[MESSAGE]";
                 }
 
-                $rules{$sid}{'status'} = 'ask-disable';
+                $rules{$sid}[STATUS] = 'ask-disable';
               }
             }
           }
@@ -1465,14 +1513,14 @@ sub parse_rule_file_pass_2( $ )
         else
         {
           push @{ $enabled_sids{$type} }, $sid;
-          $rules{$sid}{'status'} = 'enabled';
+          $rules{$sid}[STATUS] = 'enabled';
         }
       }
       else
       {
-        $rules{$sid}{'status'} = 'disabled';
+        $rules{$sid}[STATUS] = 'disabled';
 
-        if ($$options{'policy'} < $base_policy)
+        if ($$options[POLICY] < $base_policy)
         {
           # Should it be enabled?
           # Look for changed fields in an order that gives the most
@@ -1482,59 +1530,59 @@ sub parse_rule_file_pass_2( $ )
           # 3 - higher priority
           # 4 - revision changed
 
-          if ($$options{'classtype'} ne $rules{$sid}{'classtype'})
+          if ($$options[CLASSTYPE] ne $rules{$sid}[CLASSTYPE])
           {
-            $rules{$sid}{'change-key'} = 'Classtype';
-            $rules{$sid}{'from'}       = $rules{$sid}{'classtype'};
-            $rules{$sid}{'to'}         = $$options{'classtype'};
+            $rules{$sid}[CHANGE_KEY] = 'Classtype';
+            $rules{$sid}[FROM]       = $rules{$sid}[CLASSTYPE];
+            $rules{$sid}[TO]         = $$options[CLASSTYPE];
           }
-          elsif ($$options{'policy'} < $rules{$sid}{'policy'})
+          elsif ($$options[POLICY] < $rules{$sid}[POLICY])
           {
-            $rules{$sid}{'change-key'} = 'Policy';
-            $rules{$sid}{'from'}       = $policies[$rules{$sid}{'policy'}];
-            $rules{$sid}{'to'}         = $policies[$$options{'policy'}];
+            $rules{$sid}[CHANGE_KEY] = 'Policy';
+            $rules{$sid}[FROM]       = $policies[$rules{$sid}[POLICY]];
+            $rules{$sid}[TO]         = $policies[$$options[POLICY]];
           }
-          elsif ($$options{'priority'} < $rules{$sid}{'priority'})
+          elsif ($$options[PRIORITY] < $rules{$sid}[PRIORITY])
           {
-            $rules{$sid}{'change-key'} = 'Priority';
-            $rules{$sid}{'from'}       = $rules{$sid}{'priority'};
-            $rules{$sid}{'to'}         = $$options{'priority'};
+            $rules{$sid}[CHANGE_KEY] = 'Priority';
+            $rules{$sid}[FROM]       = $rules{$sid}[PRIORITY];
+            $rules{$sid}[TO]         = $$options[PRIORITY];
           }
-          elsif ($$options{'revision'} != $rules{$sid}{'revision'})
+          elsif ($$options[REVISION] != $rules{$sid}[REVISION])
           {
-            $rules{$sid}{'change-key'} = 'Revision';
-            $rules{$sid}{'from'}       = $rules{$sid}{'revision'};
-            $rules{$sid}{'to'}         = $$options{'revision'};
-            $revision_changed          = 1;
+            $rules{$sid}[CHANGE_KEY] = 'Revision';
+            $rules{$sid}[FROM]       = $rules{$sid}[REVISION];
+            $rules{$sid}[TO]         = $$options[REVISION];
+            $revision_changed        = 1;
           }
 
           if ($revision_changed)
           {
             if ($policy_changed and $update_settings{'APPLY_POLICY_CHANGE'} eq 'on')
             {
-              $rules{$sid}{'enabled'} = 1;
-              $rules{$sid}{'status'}  = 'enabled';
+              $rules{$sid}[ENABLED] = 1;
+              $rules{$sid}[STATUS]  = 'enabled';
 
               push @{ $enabled_sids{$type} }, $sid;
 
               if ($active_rule_file)
               {
-                log_message LOG_INFO, "Enabled rule sid:$sid due to changed $rules{$sid}{'change-key'} from $rules{$sid}{'from'} to $rules{$sid}{'to'}  $rules{$sid}{'message'}";
+                log_message LOG_INFO, "Enabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
               }
             }
             else
             {
               push @{ $disabled_sids{$type} }, $sid;
-              $rules{$sid}{'status'} = 'disabled';
+              $rules{$sid}[STATUS] = 'disabled';
 
-              if (exists $rules{$sid}{'change-key'})
+              if (exists $rules{$sid}[CHANGE_KEY])
               {
                 if ($active_rule_file)
                 {
-                  log_message LOG_INFO, "Disabled rule sid:$sid changed $rules{$sid}{'change-key'} from $rules{$sid}{'from'} to $rules{$sid}{'to'}  $rules{$sid}{'message'}";
+                  log_message LOG_INFO, "Disabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
                 }
 
-                $rules{$sid}{'status'} = 'ask-enable';
+                $rules{$sid}[STATUS] = 'ask-enable';
               }
             }
           }
@@ -1542,7 +1590,7 @@ sub parse_rule_file_pass_2( $ )
         else
         {
           push @{ $disabled_sids{$type} }, $sid;
-          $rules{$sid}{'status'} = 'disabled';
+          $rules{$sid}[STATUS] = 'disabled';
         }
       }
     }
@@ -1551,42 +1599,42 @@ sub parse_rule_file_pass_2( $ )
       # New rule
 
       $rules{$sid} = $options;
-      $rules{$sid}{'status'} = 'new';
+      $rules{$sid}[STATUS] = 'new';
 
       # Should it be enabled in the chosen policy?
 
-      if ($$options{'policy'} <= $base_policy)
+      if ($$options[POLICY] <= $base_policy)
       {
-        $rules{$sid}{'enabled'} = 1;
+        $rules{$sid}[ENABLED] = 1;
         push @{ $enabled_sids{$type} }, $sid;
 
         if ($active_rule_file)
         {
-          log_message LOG_INFO, "Enabled new rule sid:$sid $rules{$sid}{'message'}";
+          log_message LOG_INFO, "Enabled new rule sid:$sid $$options[MESSAGE]";
           $changed_sids++;
         }
       }
       else
       {
-        $rules{$sid}{'enabled'} = 0;
+        $rules{$sid}[ENABLED] = 0;
         push @{ $disabled_sids{$type} }, $sid;
 
         if ($active_rule_file)
         {
-          log_message LOG_INFO, "Disabled new rule sid:$sid $rules{$sid}{'message'}";
+          log_message LOG_INFO, "Disabled new rule sid:$sid $$options[MESSAGE]";
           $changed_sids++;
         }
       }
     }
 
-    if ( ($rules{$sid}{'enabled'} == 1) and $active_rule_file )
+    if ( ($rules{$sid}[ENABLED] == 1) and $active_rule_file )
     {
       $rule_count++;
-      $rules{$sid}{'active'} = 1;
+      $rules{$sid}[ACTIVE] = 1;
     }
     else
     {
-      $rules{$sid}{'active'} = 0;
+      $rules{$sid}[ACTIVE] = 0;
     }
 
     ($sid, $options) = get_rule( \*RULES );
@@ -1684,7 +1732,6 @@ sub get_rule( $ )
     $priority  = $1 if ($option =~ m/^priority:\s*(\d*)/);
     $classtype = $1 if ($option =~ m/^classtype:\s*(.*)/);
     $sid       = $1 if ($option =~ m/^sid:\s*(.*)/);
-    $gid       = $1 if ($option =~ m/^gid:\s*(.*)/);
 
     if ($option =~ m/^metadata:/)
     {
@@ -1810,8 +1857,7 @@ sub get_rule( $ )
 
   debug 3, "Read rule SID $sid";
 
-  return ( $sid, { 'message'   => $message,   'enabled' => $enabled, 'priority' => $priority, 'revision' => $revision,
-                   'classtype' => $classtype, 'policy'  => $policy,  'gid'      => $gid,      'ruleset'  => $ruleset } );
+  return ( $sid, [ $message, $enabled, $priority, $revision, $classtype, $policy, $ruleset ] );
 }
 
 
@@ -1927,7 +1973,7 @@ sub check_flowbits()
 
     foreach my $sid (keys %{ $flowbits{$flowbit}{':tst'} })
     {
-      $active |= $rules{$sid}{'active'};
+      $active |= $rules{$sid}[ACTIVE];
     }
 
     if ($active)
@@ -1939,7 +1985,7 @@ sub check_flowbits()
 
       foreach my $sid (keys %{ $flowbits{$flowbit}{':set'} })
       {
-        if ($rules{$sid}{'active'})
+        if ($rules{$sid}[ACTIVE])
         {
           $error = 0;
         }
@@ -1963,12 +2009,12 @@ sub check_flowbits()
       print FLOW "[$group:$flowbit]\n";
       foreach my $sid (keys %{ $flowbits{$flowbit}{':set'} })
       {
-        print FLOW "set||$sid||" . ($rules{$sid}{'active'} ? 'enabled' : 'disabled') . "||$rules{$sid}{'message'}\n";
+        print FLOW "set||$sid||" . ($rules{$sid}[ACTIVE] ? 'enabled' : 'disabled') . "||$rules{$sid}[MESSAGE]\n";
       }
       foreach my $sid (keys %{ $flowbits{$flowbit}{':tst'} })
       {
-        next unless ($rules{$sid}{'active'});
-        print FLOW "tst||$sid||" . ($rules{$sid}{'active'} ? 'enabled' : 'disabled') . "||$rules{$sid}{'message'}\n";
+        next unless ($rules{$sid}[ACTIVE]);
+        print FLOW "tst||$sid||" . ($rules{$sid}[ACTIVE] ? 'enabled' : 'disabled') . "||$rules{$sid}[MESSAGE]\n";
       }
     }
   }
