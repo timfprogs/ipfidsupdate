@@ -1,33 +1,23 @@
 #! /bin/bash
 
-# Locations of settings files
-updatedir="/var/ipfire/snortupdate"
+# Locations of files
+updatedir="/var/ipfire/idsupdate"
 updatesettings="$updatedir/settings"
-mailfile="/var/ipfire/dma/mail.conf"
-qossettings="/var/ipfire/qos/settings"
+
 temp_dir="$TMP"
 
 # Branch to use from repository
 branch=version3
 
 phase2="no"
-
-# Default update settings
-
-RATE="DAILY"
-DOWNLOAD_LIMIT=0
-POLICY="BALANCED"
-EMAIL="off"
-LIVE_UPDATE="on"
-APPLY_POLICY_CHANGE="on"
-VERSION=0
-
-if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi
-
-# If there's an old settings file, read it and use it as the defaults
-if [[ -e $updatesettings ]]; then
-  echo read old settings
-  source $updatesettings
+                                                                                                                                                                                                                            
+if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi                                                                                                                                                                      
+if [[ ! -e $updatedir/settings ]]; then updatesettings="/var/ipfire/snortupdate/settings"; fi
+                                                                                                                                                                                                                            
+# If there's an old settings file, read it and use it as the defaults                                                                                                                                                       
+if [[ -e $updatesettings ]]; then                                                                                                                                                                                           
+  echo read old settings                                                                                                                                                                                                    
+  source $updatesettings                                                                                                                                                                                                    
 fi
 
 while getopts ":2hH" opt; do
@@ -119,12 +109,12 @@ fi
 
 start=$(($RANDOM % 30 + 5))
 stop=$(($start + 10))
-CRONTAB="%hourly,nice(1),random,serialonce(true) $start-$stop /usr/local/bin/snort-update.pl"
+CRONTAB="%hourly,nice(1),random,serialonce(true) $start-$stop /usr/local/bin/ids-update.pl"
 
 fcrontab -l >fcrontab_old
 
-if grep snort-update fcrontab_old >>/dev/null; then
-  sed -i "/snort-update.pl/c$CRONTAB" fcrontab_old;
+if grep "snort-update|ids-update" fcrontab_old >>/dev/null; then
+  sed -i "/snort-update.pl\|ids-update.pl/c$CRONTAB" fcrontab_old;
 else
   cat <<END >> fcrontab_old
 
@@ -134,6 +124,7 @@ END
 fi
 
 fcrontab fcrontab_old
+unlink fcrontab_old
 
 # Update language cache
 
