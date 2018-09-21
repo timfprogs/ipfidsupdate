@@ -13,7 +13,7 @@ an old version of this updater.
 
 2. Download the installer:
 
-  ```wget https://github.com/timfprogs/ipfidsupdate/raw/version3/install-idsupdate.sh```
+  ```wget https://github.com/timfprogs/ipfidsupdate/raw/master/install-idsupdate.sh```
 
 3. Make it executable:
 
