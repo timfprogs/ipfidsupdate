@@ -7,7 +7,7 @@ updatesettings="$updatedir/settings"
 temp_dir="$TMP"
 
 # Branch to use from repository
-branch=version3
+branch=master
 
 phase2="no"
                                                                                                                                                                                                                             
