@@ -34,47 +34,55 @@ my @sets;
 my @tests;
 my $row = 0;
 
-#Read all parameters for site
-&General::readhash("${General::swroot}/main/settings", \%mainsettings);
-&General::readhash("/srv/web/ipfire/html/themes/".$mainsettings{'THEME'}."/include/colors.txt", \%color);
+# Read all parameters for site
+General::readhash("${General::swroot}/main/settings", \%mainsettings);
+General::readhash("/srv/web/ipfire/html/themes/".$mainsettings{'THEME'}."/include/colors.txt", \%color);
 
-#Show Headers
-&Header::showhttpheaders();
-&Header::openpage($Lang::tr{'snrtupd flowbit warning list'}, 1, '');
-&Header::openbigbox('100%', 'center');
-&error;
-&Header::openbox('100%', 'left', $Lang::tr{'snrtupd flowbit warning list'});
-&info;
-&Header::closebox();
-&Header::closebigbox();	
-&Header::closepage();
+# Show Headers
+Header::showhttpheaders();
+Header::openpage($Lang::tr{'idsupdate flowbit warning list'}, 1, '');
+Header::openbigbox('100%', 'center');
+error();
+Header::openbox('100%', 'left', $Lang::tr{'idsupdate flowbit warning list'});
+info();
+Header::closebox();
+Header::closebigbox();
+Header::closepage();
 exit 0;
 
 sub info
 {
+  # Displays the flowbit warnings (if there are any).
+
   unless (-e '/var/tmp/flowbit-warnings.txt')
   {
-    print "$Lang::tr{'snrtupd flowbit file not found'}\n";
+    print "$Lang::tr{'idsupdate flowbit file not found'}\n";
     return;
   }
-  
-  print "<p>$Lang::tr{'snrtupd flowbit warning explaination'}</p>\n";
-  
+
+  print "<p>$Lang::tr{'idsupdate flowbit warning explaination'}</p>\n";
+
   open IN, '<', '/var/tmp/flowbit-warnings.txt' or die "Can't open flowbit-warnings.txt: $!";
-  
+
   print "<table class=\"tbl\">\n";
 
-  print "<tr><th>$Lang::tr{'snrtupd group'}</th><th>Flowbit</th><th>$Lang::tr{'snrtupd type'}</th><th>SID</th><th>$Lang::tr{'snrtupd state'}</th><th>$Lang::tr{'snrtupd name'}</th></tr>\n";
+  print "<tr><th>$Lang::tr{'idsupdate group'}</th><th>Flowbit</th><th>$Lang::tr{'idsupdate type'}</th><th>SID</th><th>$Lang::tr{'idsupdate state'}</th><th>$Lang::tr{'idsupdate name'}</th></tr>\n";
+
+  # Read the flowbit warning file.
+  # This is going to be turned into a complicated table where entries in the first two
+  # span multiple entries in the remaining columns, so we have to read all the lines
+  # from the file that refer to a particular flowbit before outputting any information
+  # for the flowbit.
 
   for my $line (<IN>)
   {
     chomp $line;
     next unless ($line);
-    
+
     if ($line =~ m/\[(.*?)\:(.*)\]/)
     {
       show( $group, $flowbit, \@sets, \@tests );
-      
+
       @sets    = ();
       @tests   = ();
       $group   = $1 ? $1 : '[default]';
@@ -83,7 +91,7 @@ sub info
     else
     {
       my ($type, $sid, $state, $name) = split/\|\|/, $line;
-      
+
       push @sets,  [$sid, $state, $name ] if ($type eq 'set');
       push @tests, [$sid, $state, $name ] if ($type eq 'tst');
     }
@@ -94,19 +102,22 @@ sub info
   show( $group, $flowbit, \@sets, \@tests );
 
   print "</table>\n";
-  
+
   my @Info = stat( "/var/tmp/flowbit-warnings.txt" );
   my $update_time = localtime($Info[9]);
-  print "<br /><p>$Lang::tr{'snrtupd flowbit update time'}: $update_time</p>\n";
+  print "<br /><p>$Lang::tr{'idsupdate flowbit update time'}: $update_time</p>\n";
 }
 
 sub show
 {
+  # Outputs the section of the flowbit warning table that refers to a
+  # single flowbit.
+
   my ($group, $sid, $sets, $tests) = @_;
-  
+
   my @sets  = @{ $sets };
   my @tests = @{ $tests };
-  
+
   if (@sets + @tests)
   {
     my $lines  = @sets + @tests;
@@ -114,11 +125,15 @@ sub show
     my $colour = '';
     my $border = "border-top:2px solid #A0A0A0;";
     my $style  = '';
-    
+
+    # Output the information on the flowbit
+
     print "<tr><td rowspan=$lines style=\"$border\">$group</td><td rowspan=$lines style=\"$border\">$flowbit</td>";
-    print "<td rowspan=" . scalar(@sets) . " style=\"$border\">$Lang::tr{'snrtupd set'}</td>" if (@sets);
-    
-#    foreach my $def (sort { ncmp( $$a[0], $$b[0]) } @sets)
+
+    # Output information on rules that set the flowbit
+
+    print "<td rowspan=" . scalar(@sets) . " style=\"$border\">$Lang::tr{'idsupdate set'}</td>" if (@sets);
+
     foreach my $def (sort { $$a[0] <=> $$b[0] } @sets)
     {
       my ($sid, $state, $name) = @{ $def };
@@ -132,7 +147,7 @@ sub show
       {
         $sid = "<a href=\"http:/doc.emergingthreats.net/$sid\" target=\"_blank\">$sid</a>";
       }
-      
+
       if ($first)
       {
         $first = 0;
@@ -141,7 +156,7 @@ sub show
       {
         print "<tr>";
       }
-      
+
       if ($row % 2)
       {
         $colour = "background-color:$color{'color20'};";
@@ -151,7 +166,7 @@ sub show
         $colour = "background-color:$color{'color22'};";
       }
 
-      
+
       if ($border or $colour)
       {
         $style="style=\"$colour$border\"";
@@ -160,9 +175,9 @@ sub show
       {
         $style = '';
       }
-      
+
       print "<td $style>$sid</td><td $style>$state</td><td $style>$name</td></tr>\n";
-      
+
       $row++;
       $border = '';
     }
@@ -172,8 +187,10 @@ sub show
       $border = "border-top:2px dotted #A0A0A0;";
       print "<tr>";
     }
-    
-    print "<td rowspan=" . scalar(@tests) . " style=\"$border\">$Lang::tr{'snrtupd test'}</td>";
+
+    # Output information on rules that test the flowbit
+
+    print "<td rowspan=" . scalar(@tests) . " style=\"$border\">$Lang::tr{'idsupdate test'}</td>";
     $first = 1;
 
     foreach my $ref (sort { ncmp( $$a[0], $$b[0] ) } @tests)
@@ -198,7 +215,7 @@ sub show
       {
         print "<tr>";
       }
-      
+
       if ($row % 2)
       {
         $colour = "background-color:$color{'color20'};";
@@ -207,7 +224,7 @@ sub show
       {
         $colour = "background-color:$color{'color22'};";
       }
-      
+
       if ($border or $colour)
       {
         $style="style=\"$colour$border\"";
@@ -216,9 +233,9 @@ sub show
       {
         $style = '';
       }
-      
+
       print "<td $style>$sid</td><td $style>$state</td><td $style>$name</td></tr>\n";
-      
+
       $row++;
       $border = '';
     }

@@ -1,0 +1,133 @@
+###########################################################################
+# ids-update script for Logwatch
+# Analyzes the IPFire IDS update log
+#
+#########################################################################
+
+########################################################
+## Copyright (c) 2008 Lars Skjærlund
+## Covered under the included MIT/X-Consortium License:
+##    http://www.opensource.org/licenses/mit-license.php
+## All modifications and contributions by other persons to
+## this script are assumed to have been donated to the
+## Logwatch project and thus assume the above copyright
+## and licensing terms.  If you want to make contributions
+## under your own copyright or a different license this
+## must be explicitly stated in the contribution and the
+## Logwatch project reserves the right to not accept such
+## contributions.  If you have made significant
+## contributions to this script and want to claim
+## copyright please contact logwatch-devel@lists.sourceforge.net.
+#########################################################
+
+#########################################################################
+# Files - all shown with default paths:
+#
+# /usr/share/logwatch/default.conf/logfiles/ids-update.conf
+# /usr/share/logwatch/default.conf/services/ids-update.conf
+# /usr/share/logwatch/scripts/services/ids-update (this file)
+#
+# ... and of course
+#
+# /var/log/messages
+#########################################################################
+
+use Logwatch ':dates';
+
+my $Detail = $ENV{'LOGWATCH_DETAIL_LEVEL'};
+
+my $SearchDate;
+
+my %Updates;
+my @New;
+my @Deleted;
+my $Active_Rules = 0;
+my $Enabled_New  = 0;
+my $Disabled_New = 0;
+my $Deleted      = 0;
+my %Errors;
+
+
+$SearchDate = TimeFilter("%b %e");
+
+while (defined(my $ThisLine = <STDIN>)) {
+      next unless ($ThisLine =~ m/^\s*\w+\s+\w+\s+\d+:\d+:\d+ ipfire idsupdate: (.*)/);
+
+      my $text = $1;
+
+      if ($ThisLine =~ m/Completed update:\s*(\d+)/) {
+        $Active_rules = $1;
+      } elsif ($ThisLine =~ m/Download (.+) rules/) {
+        $Updates{$1}++;
+      } elsif ($ThisLine =~ m/Enabled new rule sid:(\d+) (.+)/) {
+        $Enabled_New++;
+        push @New, "sid:$1 $2";
+      } elsif ($ThisLine =~ m/Disabled new rule sid:(\d+) (.+)/) {
+        $Disabled_New++;
+      } elsif ($ThisLine =~ m/Deleted rule sid:(\d+) (.+)/) {
+        $Deleted++;
+        push @Deleted, "sid:$1 $2";
+      } elsif ($ThisLine !~ m/Enabled rule sid:\d+ changed [\w_-]+ from [\w_-]+ to [\w_-]+\s+.+/               and
+               $ThisLine !~ m/Disabled rule sid:\d+ changed [\w_-]+ from [\w_-]+ to [\w_-]+\s+.+/              and
+               $ThisLine !~ m/Enabled rule sid:\d+ due to changed [\w_-]+ from [\w_-]+ to [\w_-]+\s+.+/        and
+               $ThisLine !~ m/Disabled rule sid:\d+ due to changed [\w_-]+ from [\w_-]+ to [\w_-]+\s+.+/       and
+               $ThisLine !~ m/Starting Snort update check|No updates available|Checking that Snort is running correctly/ and
+               $ThisLine !~ m/Getting current rule state|Updating.*rules|Getting rule changes|Writing new update/        and
+               $ThisLine !~ m/Telling Snort pid \d+ to re-read rules|Stopping Snort|Starting Snort/) {
+        $Errors{$text}++ }
+}
+
+#####################################################################
+
+if (keys %Updates)
+{
+   print "\nThe following rule sets were updated:\n";
+   foreach my $Rules (sort keys %Updates)
+   {
+     print "   $Rules: $Updates{$Rules} Time(s)\n";
+   }
+
+   print "\nEnabled new rules:  $Enabled_New\n";
+   print   "Disabled new rules: $Disabled_New\n";
+   print   "Deleted rules:      $Deleted\n";
+}
+
+if ($Detail >= 5)
+{
+  if (@New)
+  {
+    print "\nNew rules enabled:\n";
+    foreach my $Rule (sort @New)
+    {
+      print "   $Rule\n";
+    }
+  }
+
+  if (@Deleted)
+  {
+    print "\nDeleted rules:\n";
+    foreach my $Rule (sort @Deleted)
+    {
+      print "   $Rule\n";
+    }
+  }
+}
+
+if (keys %Errors)
+{
+  print "\nThe following errors were detected:\n";
+
+  foreach my $Text (keys %Errors)
+  {
+    print "   $Text: $Errors{$Text} Time(s)\n";
+  }
+}
+
+exit(0);
+
+# vi: shiftwidth=3 tabstop=3 syntax=perl et
+# Local Variables:
+# mode: perl
+# perl-indent-level: 3
+# indent-tabs-mode: nil
+# End:
