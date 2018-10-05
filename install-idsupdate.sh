@@ -2,7 +2,6 @@
 
 # Locations of files
 updatedir="/var/ipfire/idsupdate"
-updatesettings="$updatedir/settings"
 
 temp_dir="$TMP"
 
@@ -12,13 +11,6 @@ branch=master
 phase2="no"
                                                                                                                                                                                                                             
 if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi                                                                                                                                                                      
-if [[ ! -e $updatedir/settings ]]; then updatesettings="/var/ipfire/snortupdate/settings"; fi
-                                                                                                                                                                                                                            
-# If there's an old settings file, read it and use it as the defaults                                                                                                                                                       
-if [[ -e $updatesettings ]]; then                                                                                                                                                                                           
-  echo read old settings                                                                                                                                                                                                    
-  source $updatesettings                                                                                                                                                                                                    
-fi
 
 while getopts ":2hH" opt; do
   case $opt in
@@ -27,23 +19,6 @@ while getopts ":2hH" opt; do
   *) echo "Usage: $0 [-2]"; exit 1;;
   esac
 done
-
-if [[ $phase2 == "no" ]]; then
-  # Check to see if there's a new version available
-
-  echo Check for new version
-
-  wget "https://github.com/timfprogs/ipfidsupdate/raw/$branch/VERSION"
-
-  NEW_VERSION=`cat VERSION`
-  rm VERSION
-
-  # Set phase2 to yes to stop download of update
-
-  if [[ $VERSION -eq $NEW_VERSION ]]; then
-    phase2="yes"
-  fi
-fi
 
 if [[ $phase2 == "no" ]]; then
 
@@ -74,7 +49,7 @@ RENAME
 PERM
 
   chown nobody.nobody /etc/snort/rules/*
-  if [[ -d /var/ipfire/snortupdate/settings ]]; then rmdir /var/ipfire/snortupdate/settings; fi
+  if [[ -d /var/ipfire/snortupdate ]]; then rm -R /var/ipfire/snortupdate; fi
 
   # Download the manifest
 
