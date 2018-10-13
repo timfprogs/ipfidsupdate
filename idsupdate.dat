@@ -48,7 +48,7 @@ my @consider_enable=();
 my @consider_disable=();
 my @enabled=();
 my @disabled=();
-my $active_rules = 0;
+my $active_rules = -1;
 my $errormessage = '';
 my @unrecognised = ();
 
@@ -336,7 +336,7 @@ END
 
   print "</table>";
 
-  print "<p><b>$Lang::tr{'idsupdate active rules'} $active_rules</b></p>";
+  print "<p><b>$Lang::tr{'idsupdate active rules'} $active_rules</b></p>" if ($active_rules > -1);
 }
 
 if (@unrecognised)
