@@ -954,8 +954,6 @@ sub download_update( $$$$ )
       $limit = "--limit-rate=${kbytes}k";
     }
 
-    log_message LOG_INFO, "Download $name rules";
-
     if ($delete_log)
     {
       # Delete the old log file if this is the first time in this run
@@ -984,7 +982,7 @@ sub download_update( $$$$ )
       {
         # The download was successful.  Record for later
 
-        debug 1, "Download successful";
+        log_message LOG_INFO, "Download $name rules";
 
         push @updates, [ "$tmp_dir/$output", $type, $name];
 
@@ -1000,7 +998,7 @@ sub download_update( $$$$ )
       }
       else
       {
-        log_message LOG_WARNING, "Download of $name rules failed checksum verification";
+        log_message LOG_WARNING, "Downloaded $name rules failed md5 verification";
         $failure = 1;
       }
     }

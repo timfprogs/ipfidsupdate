@@ -116,7 +116,7 @@ CRONTAB="%hourly,nice(1),random,serialonce(true) $start-$stop /usr/local/bin/ids
 
 fcrontab -l >fcrontab_old
 
-if grep "snort-update|ids-update" fcrontab_old >>/dev/null; then
+if grep "snort-update\|ids-update" fcrontab_old >>/dev/null; then
   sed -i "/snort-update.pl\|ids-update.pl/c$CRONTAB" fcrontab_old;
 else
   cat <<END >> fcrontab_old

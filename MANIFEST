@@ -6,8 +6,8 @@ ids-update.fr.pl /var/ipfire/addon-lang root.root 0004
 ids-update.de.pl /var/ipfire/addon-lang root.root 0004
 idsflowbits.cgi /srv/web/ipfire/cgi-bin root.root 0755
 idsupdate.dat /srv/web/ipfire/cgi-bin/logs.cgi root.root 0755
-EX-idsupdate.menu /var/ipfire/menu.d nobody.nobody 644
+EX-idsupdate.menu /var/ipfire/menu.d nobody.nobody 0644
 install-idsupdate.sh . root.root 0755
 ids-update /usr/share/logwatch/scripts/services root.root 0644
-ids-update.conf /usr/share/logwatch/dist.conf/services 0644
+ids-update.conf /usr/share/logwatch/dist.conf/services root.root 0644
 idsupdate.cgi /srv/web/ipfire/cgi-bin root.root 0755
