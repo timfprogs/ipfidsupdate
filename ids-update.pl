@@ -144,6 +144,7 @@ my $failure               = 0;        # Set to 1 if there was an error downloadi
 my $fix_community_rules   = 0;        # Set to 1 to handle duplicate community rules
 my %flowbits;
 my %flowgroups;
+my @log;
 
 
 my %policies = ( 'CONNECTIVITY' => 1, # List of policies
@@ -253,6 +254,7 @@ if (@updates )
   # rules
 
   log_message LOG_INFO, "Getting current rule state";
+
   parse_rule_files( \&parse_rule_file_pass_1, $rule_dir );
 
   # Generate the Oinkmaster configuration for each update
@@ -270,6 +272,7 @@ if (@updates )
   %flowgroups = ();
 
   log_message LOG_INFO, "Getting rule changes";
+
   parse_rule_files( \&parse_rule_file_pass_2, $rule_dir );
 
   # Iterate through the rules and check for old rules which do not exist in the
@@ -301,12 +304,13 @@ if (@updates )
 
   # Check to see if the updated configuration has errors
 
-  if (system( "$snort -c $snort_conf -T -q >>$detailed_log" ) > 0)
+  if (system( "$snort -c $snort_conf -T &>>$detailed_log" ) > 0)
   {
     log_message LOG_ERR, "Snort rule check failed";
 
-    $failure = 1;
-    $success = 0;
+    $failure             = 1;
+    $success             = 0;
+    $write_update_status = 0;
 
     restore_rules_backup();
 
@@ -356,6 +360,16 @@ if ($write_update_status)
 {
   log_message LOG_INFO, "Writing new update status";
   General::writehash($update_status, \%update_status);
+}
+
+if ($success)
+{
+  # Log changes
+
+  foreach my $message (@log)
+  {
+    log_message LOG_INFO, $message;
+  }
 }
 
 closelog();
@@ -510,7 +524,7 @@ sub check_for_deleted_rules()
     if ($rules{$sid}[STATUS] eq 'old' and $rules{$sid}[ACTIVE])
     {
       $rules{$sid}[STATUS] = 'delete';
-      log_message LOG_INFO, "Deleted rule sid:$sid $rules{$sid}[MESSAGE]" if (exists $rules{$sid}[MESSAGE]);
+      push @log, "Deleted rule sid:$sid $rules{$sid}[MESSAGE]" if (exists $rules{$sid}[MESSAGE]);
       $changed_sids++;
     }
   }
@@ -982,7 +996,7 @@ sub download_update( $$$$ )
       {
         # The download was successful.  Record for later
 
-        log_message LOG_INFO, "Download $name rules";
+        debug 1, "Download successful";
 
         push @updates, [ "$tmp_dir/$output", $type, $name];
 
@@ -995,10 +1009,13 @@ sub download_update( $$$$ )
         {
           system( "touch -r $tmp_dir/$output $tmp_dir/snortrules.tar.gz" );
         }
+
+        log_message LOG_INFO, "Download $name rules succeeded";
+
       }
       else
       {
-        log_message LOG_WARNING, "Downloaded $name rules failed md5 verification";
+        log_message LOG_WARNING, "Downloaded $name rules failed checksum verification";
         $failure = 1;
       }
     }
@@ -1488,7 +1505,7 @@ sub parse_rule_file_pass_2( $ )
 
               if ($active_rule_file)
               {
-                log_message LOG_INFO, "Disabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
+                push @log, "Disabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
               }
             }
             else
@@ -1500,7 +1517,7 @@ sub parse_rule_file_pass_2( $ )
               {
                 if ($active_rule_file)
                 {
-                  log_message LOG_INFO, "Enabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO] $$options[MESSAGE]";
+                  push @log, "Enabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO] $$options[MESSAGE]";
                 }
 
                 $rules{$sid}[STATUS] = 'ask-disable';
@@ -1565,7 +1582,7 @@ sub parse_rule_file_pass_2( $ )
 
               if ($active_rule_file)
               {
-                log_message LOG_INFO, "Enabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
+                push @log, "Enabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
               }
             }
             else
@@ -1577,7 +1594,7 @@ sub parse_rule_file_pass_2( $ )
               {
                 if ($active_rule_file)
                 {
-                  log_message LOG_INFO, "Disabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
+                  push @log, "Disabled rule sid:$sid changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
                 }
 
                 $rules{$sid}[STATUS] = 'ask-enable';
@@ -1608,7 +1625,7 @@ sub parse_rule_file_pass_2( $ )
 
         if ($active_rule_file)
         {
-          log_message LOG_INFO, "Enabled new rule sid:$sid $$options[MESSAGE]";
+          push @log, "Enabled new rule sid:$sid $$options[MESSAGE]";
           $changed_sids++;
         }
       }
@@ -1619,7 +1636,7 @@ sub parse_rule_file_pass_2( $ )
 
         if ($active_rule_file)
         {
-          log_message LOG_INFO, "Disabled new rule sid:$sid $$options[MESSAGE]";
+          push @log, "Disabled new rule sid:$sid $$options[MESSAGE]";
           $changed_sids++;
         }
       }
