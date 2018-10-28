@@ -927,13 +927,19 @@ sub download_update( $$$$ )
 
   if ($proxy_settings{'UPSTREAM_PROXY'})
   {
-    my ($peer, $peerport) = (/^(?:[a-zA-Z ]+\:\/\/)?(?:[A-Za-z0-9\_\.\-]*?(?:\:[A-Za-z0-9\_\.\-]*?)?\@)?([a-zA-Z0-9\.\_\-]*?)(?:\:([0-9]{1,5}))?(?:\/.*?)?$/);
-
-    if ($peer)
+    if ($proxy_settings{'UPSTREAM_USER'})
     {
-      $wget_proxy = "--proxy=on --proxy-user=$proxy_settings{'UPSTREAM_USER'} --proxy-passwd=$proxy_settings{'UPSTREAM_PASSWORD'} -e http_proxy=http://$peer:$peerport/";
+      $wget_proxy = "--proxy=on --proxy-user=$proxy_settings{'UPSTREAM_USER'} --proxy-passwd=$proxy_settings{'UPSTREAM_PASSWORD'} -e http_proxy=http://$proxy_settings{'UPSTREAM_PROXY'}/";
 
-      $ua->proxy( "html", "http://$peer:$peerport/" );
+      $ua->proxy("http"  => "http://$proxy_settings{'UPSTREAM_USER'}:$proxy_settings{'UPSTREAM_PASSWORD'}\@$proxy_settings{'UPSTREAM_PROXY'}/");
+      $ua->proxy("https" => "http://$proxy_settings{'UPSTREAM_USER'}:$proxy_settings{'UPSTREAM_PASSWORD'}\@$proxy_settings{'UPSTREAM_PROXY'}/");
+    }
+    else
+    {
+      $wget_proxy = "--proxy=on -e http_proxy=http://$proxy_settings{'UPSTREAM_PROXY'}/";
+
+      $ua->proxy("http"  => "http://$proxy_settings{'UPSTREAM_PROXY'}/");
+      $ua->proxy("https" => "http://$proxy_settings{'UPSTREAM_PROXY'}/");
     }
   }
 
