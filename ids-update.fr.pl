@@ -17,11 +17,11 @@
 'idsupdate updated rules' => 'Règles mises à jour',
 'idsupdate changed enabled' => 'Règles activées qui ont changé',
 'idsupdate consider disabling' => 'Les règles activées suivantes ont été modifiées et normalement désactivées dans la stratégie actuellement ' .
-                                'sélectionnée. Il est utile de considérer si les raisons pour lesquelles ils ont été activés sont toujours ' .
+                                'sélectionnée. Il est utile de vérifier si les raisons pour lesquelles elles ont été activées sont toujours ' .
                                 'valables.',
 'idsupdate changed disabled' => 'Règles désactivées qui ont changé',
 'idsupdate consider enabling' => 'Les règles désactivées suivantes ont été modifiées, normalement activées dans la stratégie actuellement ' .
-                               'sélectionnée. Il est utile de considérer si les raisons pour lesquelles ils ont été désactivés sont toujours ' .
+                               'sélectionnée. Il est utile de vérifier si les raisons pour lesquelles elles ont été désactivées sont toujours ' .
                                'valables.',
 'idsupdate enabled' => 'Règles activées',
 'idsupdate enabled due to policy change' => "Les règles suivantes ont été activées en raison d'un changement de politique",
@@ -30,7 +30,7 @@
 'idsupdate change' => 'Changement',
 'idsupdate from' => 'De',
 'idsupdate to' => 'À',
-'idsupdate none found' => 'Aucune trouvée dans les fichiers de règles actifs',
+'idsupdate none found' => 'Aucune trouvée dans les fichiers de règles actives',
 'idsupdate unrecognised log messages' => 'Entrées inconnues',
 'idsupdate flowbit warnings' => 'Il y a des avertissements pour les flowbits testés dans les règles actives sans être défini.',
 'idsupdate flowbit warning list' => "Alerte de débit de règle du système de détection d'intrusion",
