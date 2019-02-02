@@ -21,9 +21,9 @@
 'idsupdate changed disabled' => 'Disabled rules that have changed',
 'idsupdate consider enabling' => 'The following disabled rules have changed that would normally be enabled in the currently selected policy. ' .
                                  'It is worth considering whether the reasons they were disabled are still valid.',
-'idsupdate enabled' => 'Rules that have been enabled',
+'idsupdate enabled' => 'New rules that have been enabled',
 'idsupdate enabled due to policy change' => 'The following rules have been enabled due to a change in policy',
-'idsupdate disabled' => 'Rules that have been disabled',
+'idsupdate disabled' => 'New rules that have been disabled',
 'idsupdate disabled due to policy changed' => 'The following rules have been disabled due to a change in policy',
 'idsupdate change' => 'Change',
 'idsupdate from' => 'From',
@@ -49,7 +49,7 @@
 'idsupdate rate' => 'Update rate',
 'idsupdate download limit' => 'Download limit (kbit/s)',
 'idsupdate default policy' => 'Default policy',
-'idsupdate live update' => 'Enable live update',
+'idsupdate low memory usage' => 'Low memory usage',
 'idsupdate enable email' => 'Send emails',
 'idsupdate apply policy change' => 'Apply policy changes',
 'idsupdate policy connectivity' => 'Connectivity',
@@ -62,5 +62,6 @@
 'idsupdate status' => 'Status',
 'idsupdate ruleset' => 'Ruleset',
 'idsupdate last updated' => 'Last updated',
-'idsupdate invalid input for download limit' => 'Invalid input for download limit'
+'idsupdate invalid input for download limit' => 'Invalid input for download limit',
+'idsupdate force policy change' => 'Force policy at next update'
 );

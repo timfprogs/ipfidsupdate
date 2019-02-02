@@ -22,9 +22,9 @@
 'idsupdate changed disabled' => 'Deaktivierte Regeln, die sich geändert haben',
 'idsupdate consider enabling' => 'Die folgenden deaktivierten Regeln wurden geändert, die normalerweise in der aktuell ausgewählten Richtlinie ' .
                                'aktiviert wären. Es lohnt sich zu überlegen, ob die Gründe für ihre Deaktivierung noch gültig sind.',
-'idsupdate enabled' => 'Regeln, die aktiviert wurden',
+'idsupdate enabled' => 'Neue Regeln, die aktiviert wurden',
 'idsupdate enabled due to policy change' => 'Die folgenden Regeln wurden aufgrund einer Änderung der Richtlinie aktiviert',
-'idsupdate disabled' => 'Regeln, die deaktiviert wurden',
+'idsupdate disabled' => 'Neue Regeln, die deaktiviert wurden',
 'idsupdate disabled due to policy changed' => 'Die folgenden Regeln wurden aufgrund einer Änderung der Richtlinie deaktiviert',
 'idsupdate change' => 'Veränderung',
 'idsupdate from' => 'Von',
@@ -51,7 +51,7 @@
 'idsupdate rate' => 'Aktualisierungsrate',
 'idsupdate download limit' => 'Downloadlimit (kbit/s)',
 'idsupdate default policy' => 'Standardrichtlinie',
-'idsupdate live update' => 'Live-Aktualisierung aktivieren',
+'idsupdate low memory usage' => 'Geringer Speicherbedarf',
 'idsupdate enable email' => 'E-Mails senden',
 'idsupdate apply policy change' => 'Wenden Sie Richtlinienänderungen an',
 'idsupdate policy connectivity' => 'Konnektivität',
@@ -64,5 +64,6 @@
 'idsupdate status' => 'Status',
 'idsupdate ruleset' => 'Ruleset',
 'idsupdate last updated' => 'Regelsatz',
-'idsupdate invalid input for download limit' => 'Ungültige Eingabe für Downloadlimit'
+'idsupdate invalid input for download limit' => 'Ungültige Eingabe für Downloadlimit',
+'idsupdate force policy change' => 'Erzwinge Richtlinien beim nächsten Update'
 );

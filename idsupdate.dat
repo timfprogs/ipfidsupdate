@@ -492,8 +492,12 @@ sub processevent
         push @new_disabled, "$1||$2";
       } elsif ($_ =~ m/Enabled rule (sid:\d+) due to changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
         push @enabled, "$1||$2||$3||$4||$5";
+      } elsif ($_ =~ m/Enabled rule (sid:\d+) due to forced policy change\s+(.+)/) {
+        push @enabled, "$1||-||-||-||$2";
       } elsif ($_ =~ m/Disabled rule (sid:\d+) due to changed ([\w_-]+) from ([\w_-]+) to ([\w_-]+)\s+(.+)/) {
         push @disabled, "$1||$2||$3||$4||$5";
+      } elsif ($_ =~ m/Disabled rule (sid:\d+) due to forced policy change\s+(.+)/) {
+        push @disabled, "$1||-||-||-||$2";
       } elsif ($_ !~ m/Starting Snort update check|No updates available|Checking that Snort is running correctly/ and
                $_ !~ m/Getting current rule state|Updating.*rules|Getting rule changes|Writing new update/        and
                $_ !~ m/Telling Snort pid \d+ to re-read rules|Stopping Snort|Starting Snort/) {

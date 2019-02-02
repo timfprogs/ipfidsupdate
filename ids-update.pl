@@ -25,6 +25,7 @@
 use strict;
 use warnings;
 
+use Carp;
 use File::Copy;
 use File::Basename;
 use Sort::Naturally;
@@ -42,12 +43,13 @@ require "${General::swroot}/lang.pl";
 # These variables give the locations of various files used by this script
 ############################################################################
 
+my $base            = "${General::swroot}/idsupdate";
 my $rule_dir        = "/etc/snort/rules";
 my $oinkmaster_conf = "${General::swroot}/snort/oinkmaster.conf";
 my $snort_conf      = "/etc/snort/snort.conf";
 my $mail_config     = "${General::swroot}/dma/mail.conf";
-my $update_settings = "${General::swroot}/idsupdate/settings";
-my $update_status   = "${General::swroot}/idsupdate/status";
+my $update_settings = "$base/settings";
+my $update_status   = "$base/status";
 my $snort_settings  = "${General::swroot}/snort/settings";
 my $proxy_settings  = "${General::swroot}/proxy/settings";
 my $cert_file       = "/etc/ssl/certs/ca-bundle.crt";
@@ -118,6 +120,7 @@ sub create_rules_backup();
 sub restore_rules_backup();
 sub check_flowbits();
 sub expand_flowbit_groups();
+sub write_classification();
 
 ############################################################################
 # Variables
@@ -137,6 +140,7 @@ my %update_status;                    # Update status including identifier of in
 my @updates;                          # Rules sets and URLs for which updates are available
 my %enabled_rule_files;               # Rule categories that are enabled
 my %classtype_priority;               # Used to map rule classtypes to priorities
+my %classtype_description;            # Description of classtypes
 my $write_update_status   = 0;        # Set to 1 to write update status at end of run
 my $delete_log            = 1;        # Delete detailed download/rule update log
 my $success               = 0;        # Set to 1 if some rules were successfully downloaded and updated
@@ -173,7 +177,8 @@ openlog( "idsupdate", "nofatal", LOG_USER);
                      'DOWNLOAD_LIMIT'      => 5500,         # Maximum rule set download rate in kbit/s
                      'LIVE_UPDATE'         => 'on',         # Attempt to get Snort to perform a live rule update
                      'APPLY_POLICY_CHANGE' => 'on',         # Change rule state according to policy changes
-                     'EMAIL'               => 'on' );       # Send a status email for a download success/failure
+                     'EMAIL'               => 'on',         # Send a status email for a download success/failure
+                     'FORCE_POLICY'        => 'off' );      # Force rule enable/disable settings as policy
 
 %mail_settings   = ( 'USEMAIL'             => 'off' );      # Email disabled
 
@@ -289,6 +294,10 @@ if (@updates )
 
   update_rules();
 
+  # Write the combined classification file
+
+  write_classification();
+
   if (($update_settings{'LIVE_UPDATE'} ne 'on') or
       ($update_status{'SNORT_UPDATE_STOPPED_SNORT'} > 10))
   {
@@ -332,7 +341,7 @@ if (@updates )
 
     restart_snort();
 
-    log_message LOG_INFO, "Completed update: $rule_count rules active";
+    push @log, "Completed update: $rule_count rules active";
   }
 
   # Send an email with the status, if enabled
@@ -354,14 +363,6 @@ else
 
 check_running();
 
-# Update the settings and status files if they've changed
-
-if ($write_update_status)
-{
-  log_message LOG_INFO, "Writing new update status";
-  General::writehash($update_status, \%update_status);
-}
-
 if ($success)
 {
   # Log changes
@@ -370,6 +371,21 @@ if ($success)
   {
     log_message LOG_INFO, $message;
   }
+}
+
+# Update the settings and status files if they've changed
+
+if ($success and $update_settings{FORCE_POLICY} eq 'on')
+{
+  log_message LOG_INFO, "Writing new update settings";
+  $update_settings{FORCE_POLICY} = 'off';
+  General::writehash($update_settings, \%update_settings);
+}
+
+if ($write_update_status)
+{
+  log_message LOG_INFO, "Writing new update status";
+  General::writehash($update_status, \%update_status);
 }
 
 closelog();
@@ -793,7 +809,7 @@ sub update_rules()
     my ($file, $type, $name) = @{ $update };
     my $status;
 
-    log_message LOG_INFO, "Updating $name rules";
+    push @log, "Updating $name rules";
 
     my $conf_file = "${General::swroot}/idsupdate/${type}_oinkmaster.conf";
 
@@ -911,11 +927,12 @@ sub download_update( $$$$ )
 {
   my ($version_url, $tarball_url, $type, $name) = @_;
 
-  my $key = uc $type;
+  my $key             = uc $type;
   my $current_md5;
   my $current_version = $update_status{$key} || "";
-  my $status = 0;
-  my $wget_proxy = '';
+  my $status          = 0;
+  my $wget_proxy      = '';
+  my ($output)        = $tarball_url =~ m#([^//]+\.gz)#;
 
   debug 1, "Check for $name update";
 
@@ -953,6 +970,11 @@ sub download_update( $$$$ )
     log_message LOG_WARNING, "Failed to download $name version file $version_url: ". $response->status_line;
     $failure = 1;
 
+    if ($update_settings{FORCE_POLICY} eq 'on')
+      {
+        push @updates, [ "$tmp_dir/$output", $type, $name] if (-e "$tmp_dir/$output");
+      }
+
     return;
   }
 
@@ -966,7 +988,6 @@ sub download_update( $$$$ )
     # Need to download the new rules
 
     my $limit    = "";
-    my ($output) = $tarball_url =~ m#([^//]+\.gz)#;
 
     if ($update_settings{'DOWNLOAD_LIMIT'} > 0)
     {
@@ -1009,15 +1030,26 @@ sub download_update( $$$$ )
         $update_status{$key} = $new_version;
         $write_update_status  = 1;
 
-        copy $classtype_file, "$rule_dir/${key}_classification.config";
-
         if (not -e "$tmp_dir/snortrules.tar.gz" or (-M "$tmp_dir/snortrules.tar.gz") > (-M "$tmp_dir/$output"))
         {
           system( "touch -r $tmp_dir/$output $tmp_dir/snortrules.tar.gz" );
         }
 
-        log_message LOG_INFO, "Download $name rules succeeded";
+        push @log, "Download $name rules succeeded";
 
+        # Extract the classification.config and reference.config files
+
+        system( "sudo -u nobody tar --extract --file $tmp_dir/$output --wildcards --one-top-level=$tmp_dir --strip-components=1 \"*/classification.config\" \"*/reference.config\"" );
+
+        if (-e "$tmp_dir/classification.config")
+        {
+          move "$tmp_dir/classification.config", "$tmp_dir/${key}_classification.config"
+        }
+
+        if (-e "$tmp_dir/reference.config")
+        {
+          move "$tmp_dir/reference.config", "$tmp_dir/${key}_reference.config"
+        }
       }
       else
       {
@@ -1025,6 +1057,13 @@ sub download_update( $$$$ )
         $failure = 1;
       }
     }
+  }
+
+  if (($update_settings{FORCE_POLICY} eq 'on') and $failure)
+  {
+    # Do the update anyway to reset policy
+
+    push @updates, [ "$tmp_dir/$output", $type, $name] if (-e "$tmp_dir/$output");
   }
 }
 
@@ -1057,9 +1096,10 @@ sub parse_classification_file( $ )
 
     if ($line =~ m/^config\s+classification:/)
     {
-      my (undef, $classtype, undef, $priority) = split /,\s*|:\s*/, $line;
+      my (undef, $classtype, $description, $priority) = split /,\s*|:\s*/, $line;
 
-      $classtype_priority{$classtype} = $priority;
+      $classtype_priority{$classtype}    = $priority;
+      $classtype_description{$classtype} = $description;
     }
   }
 
@@ -1093,7 +1133,8 @@ sub check_for_updates( $ )
   my $et_v    = $emerging_threats_snort_version;
   my $vrt_v   = $talos_vrt_snort_version;
 
-  my $Version = `snort -V 2>&1 | grep 'Version'`;
+  my $Version = `$snort -V 2>&1 | grep 'Version'`;
+
   my ($v) = $Version =~ m/(\d+\.[\d\.]*)/;
   $v =~ s/\.//g if ($v);
   $vrt_v = $v if ($v);
@@ -1112,14 +1153,7 @@ sub check_for_updates( $ )
 
     debug 2, "Rulefile $file";
 
-    if ($file =~ m/classification\.config$/)
-    {
-      # The classification file maps the classtype to a default priority for
-      # that classtype which we'll need later.
-
-      parse_classification_file( "$rule_dir/$file" );
-    }
-    elsif ($file =~ m/^emerging-.*\.rules$/)
+    if ($file =~ m/^emerging-.*\.rules$/)
     {
       $found_emerging = 1;
     }
@@ -1183,6 +1217,26 @@ sub check_for_updates( $ )
                      "community",
                      "Community" );
   }
+
+  if (@updates)
+  {
+    opendir DIR, $tmp_dir or abort "Can't open Snort rules dir $rule_dir: $!";
+
+    foreach my $file (readdir DIR)
+    {
+      next if ($file =~ m/^\./);
+
+      if ($file =~ m/_classification\.config$/)
+      {
+        # The classification file maps the classtype to a default priority for
+        # that classtype which we'll need later.
+
+        parse_classification_file( "$tmp_dir/$file" );
+      }
+    }
+
+    closedir DIR;
+  }
 }
 
 
@@ -1242,7 +1296,7 @@ sub generate_oinkmaster_config( )
     my ($file, $type, $name) = @{ $update };
     my $status;
 
-    my $conf_file = "${General::swroot}/idsupdate/${type}_oinkmaster.conf";
+    my $conf_file = "$base/${type}_oinkmaster.conf";
 
     # Create a new Oinkmaster config file.
 
@@ -1452,6 +1506,58 @@ sub parse_rule_file_pass_2( $ )
       next;
     }
 
+    # Sanity check on policy for new version of rule
+    # Rulefiles are distributed with connectivity and balanced rules enabled and other rules disabled
+
+    if ($$options[ENABLED] and $$options[POLICY] > $policies{BALANCED})
+    {
+      $$options[POLICY] = $policies{BALANCED};
+    }
+    elsif (not $$options[ENABLED] and $$options[POLICY] <= $policies{BALANCED})
+    {
+      $$options[POLICY] = $policies{SECURITY};
+    }
+
+    if ($update_settings{FORCE_POLICY} eq 'on')
+    {
+      if ($$options[POLICY] > $base_policy)
+      {
+        push @{ $disabled_sids{$type} }, $sid;
+
+        if ($rules{$sid}[ENABLED])
+        {
+          push @log, "Disabled rule sid:$sid due to forced policy change $$options[MESSAGE]" if ($active_rule_file);
+          $rules{$sid}[ENABLED] = 0;
+        }
+      }
+      else
+      {
+        push @{ $enabled_sids{$type} }, $sid;
+
+        if (not $rules{$sid}[ENABLED])
+        {
+          push @log, "Enabled rule sid:$sid due to forced policy change $$options[MESSAGE]" if ($active_rule_file);
+          $rules{$sid}[ENABLED] = 1;
+        }
+      }
+
+      $rules{$sid}[STATUS] = 'forced';
+
+      if ( ($rules{$sid}[ENABLED] == 1) and $active_rule_file )
+      {
+        $rule_count++;
+        $rules{$sid}[ACTIVE] = 1;
+      }
+      else
+      {
+        $rules{$sid}[ACTIVE] = 0;
+      }
+
+      ($sid, $options) = get_rule( \*RULES );
+
+      next;
+    }
+
     if (exists $rules{$sid})
     {
       my $policy_changed   = 0;
@@ -1511,7 +1617,7 @@ sub parse_rule_file_pass_2( $ )
 
               if ($active_rule_file)
               {
-                push @log, "Disabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO]  $$options[MESSAGE]";
+                push @log, "Disabled rule sid:$sid due to changed $rules{$sid}[CHANGE_KEY] from $rules{$sid}[FROM] to $rules{$sid}[TO] $$options[MESSAGE]";
               }
             }
             else
@@ -1529,6 +1635,11 @@ sub parse_rule_file_pass_2( $ )
                 $rules{$sid}[STATUS] = 'ask-disable';
               }
             }
+          }
+          else
+          {
+            push @{ $enabled_sids{$type} }, $sid;
+            $rules{$sid}[STATUS] = 'enabled';
           }
         }
         else
@@ -1595,7 +1706,7 @@ sub parse_rule_file_pass_2( $ )
             {
               push @{ $disabled_sids{$type} }, $sid;
               $rules{$sid}[STATUS] = 'disabled';
-
+;
               if (exists $rules{$sid}[CHANGE_KEY])
               {
                 if ($active_rule_file)
@@ -1606,6 +1717,11 @@ sub parse_rule_file_pass_2( $ )
                 $rules{$sid}[STATUS] = 'ask-enable';
               }
             }
+          }
+          else
+          {
+            push @{ $disabled_sids{$type} }, $sid;
+            $rules{$sid}[STATUS] = 'disabled';
           }
         }
         else
@@ -1896,7 +2012,7 @@ sub abort( $ )
 my ($message) = @_;
 
   log_message( LOG_ERR, $message );
-  die $message;
+  croak $message;
 }
 
 
@@ -2041,4 +2157,23 @@ sub check_flowbits()
   }
 
   close FLOW if ($file_open);
+}
+
+
+#------------------------------------------------------------------------------
+# sub write_classification()
+#
+# Writes the combined classification file
+#------------------------------------------------------------------------------
+
+sub write_classification()
+{
+  open CLASS, '>', $classtype_file or abort "Can't write classification file $classtype_file: $!";
+
+  foreach my $classtype (sort keys %classtype_priority)
+  {
+    print CLASS "config classification: $classtype,$classtype_description{$classtype},$classtype_priority{$classtype}\n";
+  }
+
+  close CLASS;
 }
