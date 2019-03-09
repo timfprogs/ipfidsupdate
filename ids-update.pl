@@ -361,7 +361,7 @@ else
 # Check whether all the expected instances of Snort are running and restart
 # if necessary
 
-check_running();
+check_running() if (is_connected());
 
 if ($success)
 {
@@ -1136,6 +1136,7 @@ sub check_for_updates( $ )
   my $Version = `$snort -V 2>&1 | grep 'Version'`;
 
   my ($v) = $Version =~ m/(\d+\.[\d\.]*)/;
+  $v .= '.0' while ($v !~ m/\d+\.\d+\.\d+\.\d+/);
   $v =~ s/\.//g if ($v);
   $vrt_v = $v if ($v);
 
