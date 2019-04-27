@@ -9,14 +9,18 @@ temp_dir="$TMP"
 branch=master
 
 phase2="no"
-                                                                                                                                                                                                                            
-if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi                                                                                                                                                                      
 
-while getopts ":2hH" opt; do
+if [[ ! -d $updatedir ]]; then mkdir -p $updatedir; fi
+
+while getopts ":2hHb:" opt; do
   case $opt in
   2) phase2="yes";;
 
-  *) echo "Usage: $0 [-2]"; exit 1;;
+  b) branch=$OPTARG;;
+
+  :) echo "No argument supplied for option -$OPTARG"; exit 1;;
+
+  *) echo "Usage: $0 [-2] [-b branch]"; exit 1;;
   esac
 done
 

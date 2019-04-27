@@ -21,9 +21,9 @@
 'idsupdate changed disabled' => 'Reglas desactivadas que han cambiado',
 'idsupdate consider enabling' => 'Las siguientes reglas desactivadas han cambiado y normalmente se habilitarían en la política actualmente ' .
                                'seleccionada. Vale la pena considerar si las razones por las que fueron deshabilitadas siguen siendo válidas.',
-'idsupdate enabled' => 'Reglas que han sido habilitadas',
+'idsupdate enabled' => 'Nuevas reglas que han sido habilitadas',
 'idsupdate enabled due to policy change' => 'Las siguientes reglas se han habilitado debido a un cambio en la política',
-'idsupdate disabled' => 'Reglas que han sido deshabilitadas',
+'idsupdate disabled' => 'Nuevas reglas que han sido deshabilitadas.',
 'idsupdate disabled due to policy changed' => 'Las siguientes reglas se han desactivado debido a un cambio en la política',
 'idsupdate change' => 'Cambio',
 'idsupdate from' => 'De',
@@ -50,7 +50,7 @@
 'idsupdate rate' => 'Frecuencia de actualización',
 'idsupdate download limit' => 'Límite de descarga (kbit/s)',
 'idsupdate default policy' => 'Política predeterminada',
-'idsupdate live update' => 'Habilitar actualización en vivo',
+'idsupdate low memory usage' => 'Bajo uso de memoria',
 'idsupdate enable email' => 'Enviar correos electrónicos',
 'idsupdate apply policy change' => 'Aplicar cambios de política',
 'idsupdate policy connectivity' => 'Conectividad',
@@ -63,5 +63,6 @@
 'idsupdate status' => 'Estado',
 'idsupdate ruleset' => 'Conjunto de reglas',
 'idsupdate last updated' => 'Última actualización',
-'idsupdate invalid input for download limit' => 'Entrada inválida para el límite de descarga'
+'idsupdate invalid input for download limit' => 'Entrada inválida para el límite de descarga',
+'idsupdate force policy change' => 'Política de fuerza en la próxima actualización.'
 );

@@ -75,6 +75,7 @@ else
                 'DOWNLOAD_LIMIT'      => $qossettings{'DEF_INC_SPD'}/2,
                 'LIVE_UPDATE'         => 'on',
                 'APPLY_POLICY_CHANGE' => 'on',
+                'FORCE_POLICY'        => 'off',
                 'VERSION'             => 3,
                 'DEBUG'               => 0 );
 }
@@ -96,6 +97,7 @@ if ($cgiparams{'ACTION'} eq $Lang::tr{'save'})
   $settings{'ENABLE'}              = 'off';
   $settings{'LIVE_UPDATE'}         = 'off';
   $settings{'APPLY_POLICY_CHANGE'} = 'off';
+  $settings{'FORCE_POLICY'}        = 'off';
   $settings{'EMAIL'}               = 'off';
 
 
@@ -103,6 +105,8 @@ if ($cgiparams{'ACTION'} eq $Lang::tr{'save'})
   {
     $settings{$item} = $cgiparams{$item} if (exists $settings{$item});
   }
+
+  $settings{'LIVE_UPDATE'} = $settings{'LIVE_UPDATE'} eq 'on' ? 'off' : 'on';
 
   General::writehash( "$settings", \%settings );
 
@@ -188,8 +192,9 @@ END
   my $security_selected      = $settings{'POLICY'} eq 'SECURITY'        ? "selected='selected'" : '';
   my $maxdetect_selected     = $settings{'POLICY'} eq 'MAXDETECT'       ? "selected='selected'" : '';
 
-  my $live_update_selected   = $settings{'LIVE_UPDATE'} eq 'on'         ? 'checked' : '';
+  my $low_memory_selected    = $settings{'LIVE_UPDATE'} eq 'off'        ? 'checked' : '';
   my $apply_changes_selected = $settings{'APPLY_POLICY_CHANGE'} eq 'on' ? 'checked' : '';
+  my $force_policy_selected  = $settings{'FORCE_POLICY'} eq 'on'        ? 'checked' : '';
   my $email_selected         = $settings{'EMAIL'} eq 'on'               ? 'checked' : '';
 
   print <<END
@@ -221,12 +226,16 @@ END
       </td>
     </tr>
   <tr>
-    <td style='width:24em'>$Lang::tr{'idsupdate live update'}</td>
-    <td><label><input type='checkbox' name='LIVE_UPDATE' id='LIVE_UPDATE' $live_update_selected></label></td>
+    <td style='width:24em'>$Lang::tr{'idsupdate low memory usage'}</td>
+    <td><label><input type='checkbox' name='LIVE_UPDATE' id='LIVE_UPDATE' $low_memory_selected></label></td>
   </tr>
   <tr>
     <td style='width:24em'>$Lang::tr{'idsupdate apply policy change'}</td>
     <td><label><input type='checkbox' name='APPLY_POLICY_CHANGE' id='APPLY_POLICY_CHANGE' $apply_changes_selected></label></td>
+  </tr>
+  <tr>
+    <td style='width:24em'>$Lang::tr{'idsupdate force policy change'}</td>
+    <td><label><input type='checkbox' name='FORCE_POLICY' id='FORCE_POLICY' $force_policy_selected></label></td>
   </tr>
 END
 ;
